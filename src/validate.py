@@ -1,8 +1,12 @@
 """Validation: where do KNOWN terrestrial Mars analogs rank for each target?
 
-Writes results/validation.md and data/processed/validation.json. For each site we report the cell score and its
-percentile among all valid land cells, plus the best percentile within a 0.25 deg neighbourhood (site coordinates are
-approximate and analog terrains are often a few km across).
+Three parts, all written to results/validation.md and data/processed/validation.json:
+  1. Development set (config.known_analogs) - used while building the method.
+  2. Blind set (config.blind_analogs) - published analogs scored ONCE with the frozen settings, reported as-is.
+  3. Null test - the percentile distribution of 1,000 random valid land cells (seed 0), so readers can see what
+     "random" looks like next to the analog sites.
+For each site we report the cell score and its percentile among all valid land cells, plus the best percentile within
+a 0.25 deg neighbourhood (site coordinates are approximate and analog terrains are often a few km across).
 """
 from __future__ import annotations
 
@@ -19,6 +23,7 @@ from similarity import DIMS  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 PROC = ROOT / "data" / "processed"
+N_NULL = 1000
 
 
 def percentile_of(score_map, valid, value):
@@ -26,17 +31,63 @@ def percentile_of(score_map, valid, value):
     return float((v < value).mean() * 100.0)
 
 
-def why_nan(feats, r, c):
+def why_nan(feats, r, c, lat):
     reasons = []
+    if lat < -60 or lat > 84:
+        reasons.append("outside the analysed latitude range (60S-84N)")
     if not feats["land_mask"][r, c]:
         reasons.append("water / no ASTER GED land")
     if "ice_mask" in feats and feats["ice_mask"][r, c]:
-        reasons.append("permanent ice (warmest monthly LST < 0 C)")
+        reasons.append("permanent snow/ice")
     if not np.isfinite(feats["emis_b10"][r, c]):
         reasons.append("ASTER GED gap (frozen/polar)")
     if not np.isfinite(feats["lst_max_k"][r, c]):
         reasons.append("no valid MODIS LST")
+    if not np.isfinite(feats["ati"][r, c]):
+        reasons.append("ATI undefined (<4 months with day-night contrast >= 10 K)")
     return "; ".join(reasons) or "masked"
+
+
+def score_sites(sites, t, ov, dims, g, feats, valid):
+    out = {}
+    for k, s in sites.items():
+        r, c = g.rowcol(s["lat"], s["lon"])
+        rr = slice(max(r - 2, 0), r + 3)
+        cc = slice(max(c - 2, 0), c + 3)
+        v = float(ov[r, c])
+        nb = np.asarray(ov[rr, cc])
+        best = float(np.nanmax(nb)) if np.isfinite(nb).any() else np.nan
+        if np.isfinite(v):
+            p, note = percentile_of(np.asarray(ov), valid, v), ""
+        else:
+            p, note = np.nan, why_nan(feats, r, c, s["lat"])
+        pb = percentile_of(np.asarray(ov), valid, best) if np.isfinite(best) else np.nan
+        dv = {d: float(dims[d][r, c]) for d in DIMS}
+        out[k] = {"name": s["name"], "lat": s["lat"], "lon": s["lon"], "overall": v, "percentile": p,
+                  "best_neighbourhood_percentile": pb, "dims": dv, "note": note, "ref": s.get("ref", "")}
+    return out
+
+
+def table(res, title):
+    fmt = lambda x, f="{:.2f}": "n/a" if x is None or not np.isfinite(x) else f.format(x)  # noqa: E731
+    lines = [f"### {title}", "",
+             "| Site | overall (cell) | pct (cell) | pct (best 0.25 deg) | " + " | ".join(DIMS) + " | note |",
+             "|---|---|---|---|" + "---|" * len(DIMS) + "---|"]
+    for v in res.values():
+        lines.append(f"| {v['name']} ({v['lat']}, {v['lon']}) | {fmt(v['overall'])} | {fmt(v['percentile'], '{:.1f}')} | "
+                     f"{fmt(v['best_neighbourhood_percentile'], '{:.1f}')} | " + " | ".join(fmt(v['dims'][d]) for d in DIMS)
+                     + f" | {v['note']} |")
+    return lines + [""]
+
+
+def null_test(ov, valid, rng):
+    idx = np.flatnonzero(valid & np.isfinite(ov))
+    pick = rng.choice(idx, N_NULL, replace=False)
+    vals = np.asarray(ov).ravel()[pick]
+    pcts = np.array([percentile_of(np.asarray(ov), valid, v) for v in vals])
+    return {"n": N_NULL, "median_pct": float(np.median(pcts)), "p90_share": float((pcts >= 90).mean()),
+            "p75_share": float((pcts >= 75).mean()), "mean_score": float(vals.mean()),
+            "hist": np.histogram(pcts, bins=[0, 25, 50, 75, 90, 100])[0].tolist()}
 
 
 def main():
@@ -45,41 +96,31 @@ def main():
     g = Grid(cfg["grids"]["earth_ppd"], lon0=-180.0)
     feats = {p.stem: np.load(p, mmap_mode="r") for p in (PROC / "earth").glob("*.npy")}
     valid = np.asarray(feats["valid_mask"]).astype(bool)
-    res = {}
-    lines = ["# Validation: percentile rank of known Mars analogs", "",
+    res, blind, null = {}, {}, {}
+    lines = ["# Validation", "",
              "Percentile = share of valid land cells (0.05 deg) scoring lower than the site. "
              "`cell` = the 0.05 deg cell containing the site coordinate; `best 0.25 deg` = best cell within +-0.125 deg. "
+             "The **development set** was used while building the method; the **blind set** was scored once with the frozen "
+             "settings and is reported as-is. The **null test** shows 1,000 random valid land cells for comparison. "
              "Generated by `src/validate.py`.", ""]
+    rng = np.random.default_rng(0)
     for t in fps:
         ov = np.load(PROC / "similarity" / f"{t}_overall.npy", mmap_mode="r")
         dims = {d: np.load(PROC / "similarity" / f"{t}_{d}.npy", mmap_mode="r") for d in DIMS}
-        lines += [f"## {fps[t]['name']}", "",
-                  "| Site | overall (cell) | pct (cell) | pct (best 0.25 deg) | " + " | ".join(DIMS) + " | note |",
-                  "|---|---|---|---|" + "---|" * len(DIMS) + "---|"]
-        res[t] = {}
-        for k, s in cfg["known_analogs"].items():
-            r, c = g.rowcol(s["lat"], s["lon"])
-            rr = slice(max(r - 2, 0), r + 3)
-            cc = slice(max(c - 2, 0), c + 3)
-            v = float(ov[r, c])
-            nb = np.asarray(ov[rr, cc])
-            best = float(np.nanmax(nb)) if np.isfinite(nb).any() else np.nan
-            if np.isfinite(v):
-                p = percentile_of(np.asarray(ov), valid, v)
-                note = ""
-            else:
-                p = np.nan
-                note = why_nan(feats, r, c)
-            pb = percentile_of(np.asarray(ov), valid, best) if np.isfinite(best) else np.nan
-            dv = {d: float(dims[d][r, c]) for d in DIMS}
-            res[t][k] = {"name": s["name"], "lat": s["lat"], "lon": s["lon"], "overall": v, "percentile": p,
-                         "best_neighbourhood_percentile": pb, "dims": dv, "note": note}
-            fmt = lambda x, f="{:.2f}": "NaN" if not np.isfinite(x) else f.format(x)  # noqa: E731
-            lines.append(f"| {s['name']} ({s['lat']}, {s['lon']}) | {fmt(v)} | {fmt(p, '{:.1f}')} | {fmt(pb, '{:.1f}')} | "
-                         + " | ".join(fmt(dv[d]) for d in DIMS) + f" | {note} |")
-        lines.append("")
+        res[t] = score_sites(cfg["known_analogs"], t, ov, dims, g, feats, valid)
+        blind[t] = score_sites(cfg["blind_analogs"], t, ov, dims, g, feats, valid)
+        null[t] = null_test(np.asarray(ov), valid, rng)
+        n = null[t]
+        lines += [f"## {fps[t]['name']}", ""]
+        lines += table(res[t], "Development set")
+        lines += table(blind[t], "Blind set (scored once, frozen settings)")
+        lines += [f"### Null test: {n['n']} random valid land cells", "",
+                  f"median percentile {n['median_pct']:.0f}; {n['p75_share']:.0%} of random cells reach the 75th percentile and "
+                  f"{n['p90_share']:.0%} reach the 90th (by construction ~25% and ~10%); mean score {n['mean_score']:.2f}. "
+                  f"Histogram over [0-25, 25-50, 50-75, 75-90, 90-100]: {n['hist']}.", ""]
+    lines += ["## Blind-set references", ""] + [f"- **{v['name']}**: {v['ref']}" for v in cfg["blind_analogs"].values()] + [""]
     (ROOT / "results" / "validation.md").write_text("\n".join(lines))
-    json.dump(res, open(PROC / "validation.json", "w"), indent=1)
+    json.dump({"development": res, "blind": blind, "null": null}, open(PROC / "validation.json", "w"), indent=1)
     print("\n".join(lines))
 
 

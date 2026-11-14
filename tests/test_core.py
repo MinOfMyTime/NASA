@@ -74,7 +74,11 @@ def test_similarity_function():
     assert ((s >= 0) & (s <= 1)).all()
 
 
-def test_overall_renormalises_missing_dimensions():
+def test_overall_requires_all_weighted_dimensions():
     scores = {"a": np.array([1.0, 1.0]), "b": np.array([0.0, np.nan])}
     o = overall_score(scores, {"a": 0.5, "b": 0.5})
-    assert o[0] == pytest.approx(0.5) and o[1] == pytest.approx(1.0)
+    assert o[0] == pytest.approx(0.5) and np.isnan(o[1])  # missing dimension -> n/a, not a free pass
+    o = overall_score(scores, {"a": 0.5, "b": 0.5}, require_all=False)
+    assert o[1] == pytest.approx(1.0)
+    o = overall_score(scores, {"a": 1.0, "b": 0.0})  # zero-weight dimension may be missing
+    assert o[1] == pytest.approx(1.0)

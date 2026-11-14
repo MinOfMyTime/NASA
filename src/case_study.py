@@ -92,7 +92,9 @@ def emit_box(lat, lon, half=HALF):
     mat = pd.read_csv(mpath).set_index("Index")
     counts = {k: 0 for k in EMIT_10}
     depth = {k: 0.0 for k in EMIT_10}
-    n_valid = 0
+    base_counts = {k: 0 for k in EMIT_10}  # random-pixel baseline from the same scenes
+    n_valid, n_base = 0, 0
+    rng = np.random.default_rng(0)
     used = []
     for g in granules[:4]:
         link = [u for u in g.data_links() if "_MIN_" in u][0]
@@ -122,11 +124,25 @@ def emit_box(lat, lon, half=HALF):
                 counts[k] += int(hit.sum())
                 depth[k] += float((bd * w)[hit].sum())
         n_valid += int(ok.sum())
+        # baseline: 20,000 random valid swath pixels from the whole scene (same instrument, same day, same region)
+        g1 = ds["group_1_mineral_id"][:].filled(0)
+        g1b = ds["group_1_band_depth"][:].filled(0)
+        g2 = ds["group_2_mineral_id"][:].filled(0)
+        g2b = ds["group_2_band_depth"][:].filled(0)
+        sw_ok = np.flatnonzero((gx > 0) & (gy > 0))
+        pick = rng.choice(sw_ok, min(20000, sw_ok.size), replace=False)
+        py, px = gy.ravel()[pick] - 1, gx.ravel()[pick] - 1
+        for mid, bd in ((g1[py, px].astype(int), g1b[py, px].astype(float)), (g2[py, px].astype(int), g2b[py, px].astype(float))):
+            for k in EMIT_10:
+                w = mat[k].reindex(mid).fillna(0).to_numpy()
+                base_counts[k] += int(((w > 0) & (bd > 0)).sum())
+        n_base += int(pick.size)
         ds.close()
     if n_valid == 0:
         return {"status": "EMIT granules found but none cover the box after GLT orthorectification"}
     return {"status": "ok", "granules": used, "n_px_60m": n_valid,
             "fraction_px": {k: counts[k] / n_valid for k in EMIT_10},
+            "baseline_fraction_px": {k: base_counts[k] / max(n_base, 1) for k in EMIT_10}, "n_px_baseline": n_base,
             "mean_band_depth_x_weight": {k: depth[k] / n_valid for k in EMIT_10}}
 
 
@@ -193,10 +209,18 @@ def card(target, fp, row, val_dims, ag, emit, dem, figpath):
         L.append("- **ASTER GED 100 m**: no tiles cover this box.")
     if emit.get("status") == "ok":
         top = [kv for kv in sorted(emit["fraction_px"].items(), key=lambda kv: -kv[1])[:4] if kv[1] >= 0.005]
-        found = ", ".join(f"{k} in {v:.0%} of pixels" for k, v in top) or "none of the ten core minerals in >=0.5% of pixels"
+        b = emit.get("baseline_fraction_px", {})
+        found = ", ".join(f"{k} in {v:.0%} of pixels (random-pixel baseline {b.get(k, 0):.0%})" for k, v in top) \
+            or "none of the ten core minerals in >=0.5% of pixels"
         L.append(f"- **EMIT L2B minerals 60 m** ({emit['n_px_60m']:,} px from {len(emit['granules'])} scene(s)): "
                  + found
-                 + ". (Pixel fraction where the mineral appears in group-1 or group-2 identification with positive band depth.)")
+                 + f". (Pixel fraction with the mineral in group-1 or group-2 identification and positive band depth; baseline = "
+                 f"{emit.get('n_px_baseline', 0):,} random pixels from the same scenes.)")
+        tgt = {"gale": ["Montmorillonite", "Kaolinite", "Gypsum"], "jezero": ["Calcite", "Dolomite", "Montmorillonite"],
+               "meridiani": ["Hematite", "Gypsum"]}.get(target, [])
+        if tgt:
+            L.append("- **Blind prediction check** (minerals expected from the Mars target, not used in scoring): "
+                     + ", ".join(f"{k} {emit['fraction_px'][k]:.1%} vs baseline {b.get(k, 0):.1%}" for k in tgt) + ".")
     else:
         L.append(f"- **EMIT**: {emit.get('status')}.")
     if dem.get("status") == "ok":
@@ -284,9 +308,17 @@ def main(target, n=3):
         figure(figp, f"{target} candidate #{int(row['rank'])} — {row.country}", ag, dem)
         md = card(target, fp, row, val_dims, ag, emit, dem, figp)
         (CARDS / f"{target}_{int(row['rank'])}.md").write_text(md)
-        summary.append({"target": target, "rank": int(row["rank"]), "emit": emit.get("status"),
-                        "ag100": bool(ag), "dem": dem.get("status")})
+        expected = {"gale": ["Montmorillonite", "Kaolinite", "Gypsum"], "jezero": ["Calcite", "Dolomite", "Montmorillonite"],
+                    "meridiani": ["Hematite", "Gypsum"]}[target]
+        summary.append({"target": target, "rank": int(row["rank"]), "country": str(row.country), "lat": float(row.lat),
+                        "lon": float(row.lon), "emit_status": emit.get("status"), "expected": expected,
+                        "fraction": emit.get("fraction_px"), "baseline": emit.get("baseline_fraction_px"),
+                        "n_px": emit.get("n_px_60m"), "ag100": bool(ag), "dem": dem.get("status")})
         print("   ", summary[-1])
+    sp = CARDS / "summary.json"
+    prev = json.load(open(sp)) if sp.exists() else []
+    prev = [p for p in prev if p["target"] != target]
+    json.dump(prev + summary, open(sp, "w"), indent=1)
     return summary
 
 

@@ -1,6 +1,6 @@
-# Analog Card — Greenland (76.41, -25.19) vs Gale Crater (Curiosity)
+# Analog Card — United States of America (58.33, -155.15) vs Gale Crater (Curiosity)
 
-Under-studied candidate #1 for Gale Crater (Curiosity) · region area 189 km² · mean overall score **0.88** (top 0.5% of Earth's land) · nearest listed analog 1308 km away.
+Under-studied candidate #1 for Gale Crater (Curiosity) · region area 65 km² · mean overall score **0.91** (top 0.5% of Earth's land) · nearest listed analog 3173 km away.
 
 ![case study](gale_1.png)
 
@@ -8,25 +8,25 @@ Under-studied candidate #1 for Gale Crater (Curiosity) · region area 189 km² �
 
 | Dimension | Score | Mars target (median [IQR]) | Earth region |
 |---|---|---|---|
-| Topography | 0.92 | relief 1531 m, slope 5.2° | relief 561 m, slope 4.5° |
-| Thermophysics | 0.88 | TI pct 0.89 [0.69, 0.95], albedo 0.22 [0.22, 0.23] | ATI pct 0.98, albedo 0.21 |
-| Mineralogy (TIR) | 0.94 | mafic/silica/fines 0.38/0.39/0.18 | 0.27/0.49/0.23 |
-| Aridity | 1.00 | NDVI 0 | NDVI 0.00 |
-| Thermal extremes | 0.00 | ΔT 89 K, min 178 K (model) | ΔT 3 K, min 241 K |
+| Topography | 0.98 | relief 1531 m, slope 5.2° | relief 1234 m, slope 5.7° |
+| Thermophysics | 0.95 | TI pct 0.89 [0.69, 0.95], albedo 0.22 [0.22, 0.23] | ATI pct 0.93, albedo 0.17 |
+| Mineralogy (TIR) | 0.94 | mafic/silica/fines 0.38/0.39/0.18 | 0.36/0.31/0.33 |
+| Aridity | 0.83 | NDVI 0 | NDVI 0.08 |
+| Thermal extremes | 0.40 | ΔT 89 K, min 178 K (model) | ΔT 7 K, min 256 K |
 
-**Strong:** Topography, Thermophysics, Mineralogy (TIR), Aridity. **Weak:** Thermal extremes.
+**Strong:** Topography, Thermophysics, Mineralogy (TIR), Aridity. **Weak:** —.
 
 ## Zoom-in evidence (≈33 km box)
 
-- **ASTER GED 100 m** (60,923 px): bare fraction (NDVI<0.15) 100%, median NDVI 0.00, quartz index 1.006, mafic index 0.966, TIR contrast 0.014.
+- **ASTER GED 100 m** (89,286 px): bare fraction (NDVI<0.15) 70%, median NDVI 0.09, quartz index 1.008, mafic index 0.982, TIR contrast 0.019.
 - **EMIT**: no EMIT L2B MIN granules intersect this box.
-- **Copernicus GLO-30 DEM**: relief 1141 m, median 30 m slope 6.1°, 90th pct 33.6°, 28% of the box steeper than 15° (landing-hazard proxy).
+- **Copernicus GLO-30 DEM**: relief 2302 m, median 30 m slope 16.4°, 90th pct 33.7°, 54% of the box steeper than 15° (landing-hazard proxy).
 
 ## Where the analogy breaks
 
 - **Gravity** 1 g vs 0.38 g; **pressure** ~1013 mbar vs ~6 mbar (no stable liquid water on Mars, different aeolian thresholds).
 - **Radiation**: Earth's magnetic field and atmosphere shield the surface; Mars surface UV/GCR dose is orders of magnitude higher.
-- **Temperature** (thermal-extremes score 0.00): Mars target ΔT 89 K, min 178 K (model) vs Earth region ΔT 3 K, min 241 K (coldest monthly-mean night LST).
+- **Temperature** (thermal-extremes score 0.40): Mars target ΔT 89 K, min 178 K (model) vs Earth region ΔT 7 K, min 256 K (coldest monthly-mean night LST).
 
 ## Mission tests it could support
 

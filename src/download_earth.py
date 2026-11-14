@@ -1,6 +1,7 @@
 """Download the Earth products with earthaccess (credentials from ~/.netrc or EARTHDATA_USERNAME/PASSWORD).
 
   python src/download_earth.py modis          # MYD11C3 (12 monthly) + MCD43C3 (days in config.mcd43c3_days)
+  python src/download_earth.py snow           # MOD10CM monthly snow cover (ice mask)
   python src/download_earth.py ag1km          # ASTER GED 1 km, all tiles (~25k x 0.46 MB)
   python src/download_earth.py ag100 LAT LON  # ASTER GED 100 m tile(s) around a point (case studies)
   python src/download_earth.py emit LAT LON   # EMIT L2B mineral granules intersecting a 0.5 deg box
@@ -96,6 +97,14 @@ def modis():
     fetch(picks, "MCD43C3")
 
 
+def snow():
+    """MOD10CM v061: Terra MODIS monthly snow cover, 0.05 deg CMG (12 granules for the configured year)."""
+    y = CFG["year"]
+    r = earthaccess.search_data(short_name="MOD10CM", version="61", temporal=(f"{y}-01-01", f"{y}-12-31"))
+    assert len(r) == 12, f"expected 12 MOD10CM granules, got {len(r)}"
+    fetch(r, "MOD10CM")
+
+
 def ag1km():
     r = earthaccess.search_data(short_name="AG1KM", version="003", count=-1)
     print("AG1KM tiles:", len(r))
@@ -126,6 +135,8 @@ if __name__ == "__main__":
     what = sys.argv[1]
     if what == "modis":
         modis()
+    elif what == "snow":
+        snow()
     elif what == "ag1km":
         ag1km()
     elif what == "ag100":
