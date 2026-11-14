@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AnalogFinder — Mars analogs on Earth by physical fingerprint</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <link rel="stylesheet" href="style.css?v=3" />
+</head>
+<body>
+  <header>
+    <div class="brand"><strong>AnalogFinder</strong><span>Mars analogs on Earth, ranked by physical fingerprint</span></div>
+    <nav><a href="methods.html">Methods &amp; data</a></nav>
+  </header>
+  <main>
+    <aside id="controls">
+      <section>
+        <h2>Mars target</h2>
+        <select id="target"></select>
+        <p id="target-desc" class="muted"></p>
+      </section>
+      <section>
+        <h2>Map layer</h2>
+        <div id="layers" class="seg"></div>
+      </section>
+      <section>
+        <h2>Weights</h2>
+        <div id="weights"></div>
+        <button id="reset-weights" class="link">Reset defaults</button>
+      </section>
+      <section>
+        <h2>Top candidates <small class="muted">(top 0.5% regions)</small></h2>
+        <div class="tabs"><button data-list="discovery" class="on">Under-studied</button><button data-list="top">All</button></div>
+        <ol id="cands" class="list"></ol>
+      </section>
+      <section>
+        <h2>Known analogs <small class="muted">(validation)</small></h2>
+        <ul id="known" class="list"></ul>
+      </section>
+    </aside>
+    <div id="map"></div>
+    <aside id="panel" class="hidden">
+      <button id="close-panel" aria-label="Close">×</button>
+      <h2 id="p-title">—</h2>
+      <p id="p-coords" class="muted"></p>
+      <div id="p-score"></div>
+      <svg id="radar" viewBox="-130 -115 260 230" role="img" aria-label="Radar chart of dimension scores"></svg>
+      <div id="p-text"></div>
+      <table id="p-table"><thead><tr><th>Feature</th><th>Mars target<br><small>median [IQR]</small></th><th>Earth cell</th></tr></thead><tbody></tbody></table>
+      <p class="muted small">Scores are 0.25° aggregates of the 0.05° analysis grid. Every value traces to <code>src/*.py</code> and the datasets on the Methods page.</p>
+    </aside>
+  </main>
+  <div id="legend"><span>0</span><div class="bar"></div><span>1</span><em id="legend-label">overall similarity</em></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="app.js?v=3"></script>
+</body>
+</html>

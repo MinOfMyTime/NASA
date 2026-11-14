@@ -1,0 +1,59 @@
+# AnalogFinder configuration. Longitudes: Mars targets are EAST-POSITIVE 0..360; Earth sites are -180..180.
+year: 2023                     # full recent year for MODIS (MYD11C3 monthly, MCD43C3 daily sampled)
+mcd43c3_days: [1, 16]          # day-of-month sampled for MCD43C3 (16-day moving window product -> full-year coverage)
+
+grids:
+  earth_ppd: 20                # 0.05 deg analysis grid (MODIS CMG)
+  web_ppd: 4                   # 0.25 deg grid shipped to the web app
+  web_lat_range: [-60, 84]     # land rows kept for the web grids
+
+topography:
+  # Matched physical scale on both planets. Pixel baseline is set by the supplied MOLA MEGDR (1/16 deg = 3.705 km).
+  pixel_km: 3.705
+  window_px: 5                 # relief / roughness window: 5 px = ~18.5 km
+  tpi_window_px: 9             # topographic position index window (~33 km)
+
+mars:
+  window_deg: 1.0
+  tes_mineral_orientation: {north_up: true, lon0: 0.0}   # verified in scripts/inspect_mars.py
+  targets:
+    jezero:    {name: "Jezero Crater (Perseverance)",     lat: 18.4,  lon_e360: 77.6}
+    gale:      {name: "Gale Crater (Curiosity)",          lat: -5.4,  lon_e360: 137.8}
+    meridiani: {name: "Meridiani Planum (Opportunity)",   lat: -1.9,  lon_e360: 354.5}
+
+weights: {topo: 0.25, thermo: 0.25, mineral: 0.30, aridity: 0.15, extremes: 0.05}
+
+similarity:
+  sigma: 1.0                   # s = exp(-d^2 / (2 sigma^2)), d = robust distance in target-IQR units
+  # Minimum robust scale per feature (prevents a near-zero target IQR from making the score a spike).
+  min_scale:
+    pct: 0.10                  # percentile-space features (0..1); cross-instrument percentile mapping is not finer than ~0.1
+    log_relief: 0.15
+    slope_deg: 0.3
+    log_rough: 0.15
+    tpi_m: 30.0
+    albedo: 0.05                # TES bolometric vs MODIS shortwave band difference + 7.4 km TES pixels
+    ndvi: 0.1
+    diurnal_range_k: 10.0
+    lst_min_k: 10.0
+    lst_max_k: 10.0
+
+candidates:
+  top_fraction: 0.005
+  min_cells: 4                 # drop speckle: regions smaller than 4 cells (~100 km2 at low latitude)
+  area_weight: 0.02            # rank = mean score + area_weight * log10(area km2)
+  n_candidates: 25
+  exclude_known_km: 150
+
+masks:
+  ndvi_max_for_mineral: 0.3    # TIR mineral indices are only meaningful on sparsely vegetated ground
+  ice_lst_max_k: 273.15        # cells whose warmest monthly daytime LST never exceeds 0 C are treated as permanent ice
+
+known_analogs:
+  atacama:       {name: "Atacama Desert",             lat: -24.5,  lon: -69.25}
+  mojave:        {name: "Mojave / Death Valley",      lat: 36.5,   lon: -117.0}
+  mdrs_utah:     {name: "Utah MDRS",                  lat: 38.41,  lon: -110.79}
+  iceland:       {name: "Iceland highlands",          lat: 64.9,   lon: -17.5}
+  mauna_kea:     {name: "Mauna Kea flanks",           lat: 19.8,   lon: -155.5}
+  rio_tinto:     {name: "Rio Tinto",                  lat: 37.7,   lon: -6.6}
+  haughton:      {name: "Haughton Crater",            lat: 75.4,   lon: -89.7}
