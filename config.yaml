@@ -41,13 +41,21 @@ similarity:
 candidates:
   top_fraction: 0.005
   min_cells: 4                 # drop speckle: regions smaller than 4 cells (~100 km2 at low latitude)
-  area_weight: 0.02            # rank = mean score + area_weight * log10(area km2)
   n_candidates: 25
   exclude_known_km: 150
 
 masks:
   ndvi_max_for_mineral: 0.3    # TIR mineral indices are only meaningful on sparsely vegetated ground
   ice_lst_max_k: 273.15        # cells whose warmest monthly daytime LST never exceeds 0 C are treated as permanent ice
+  tir_contrast_min: 0.012      # ASTER TIR contrast below this = snow/frost-flattened spectrum -> no mineral score (scripts/mask_stats.py: median 0.007 at 60-70N vs 0.019-0.068 elsewhere)
+  aster_nobs_min: 3            # mean ASTER observations per 1 km pixel (AG1km NumObs); fewer = unreliable emissivity
+  ati:                         # monthly apparent-thermal-inertia filter (high-latitude artifact fix, see REPORT.md)
+    min_dt_k: 10.0             # a month is usable only if LST_day - LST_night >= 10 K ...
+    min_day_k: 273.15          # ... and LST_day is above freezing
+    min_months: 4              # need >= 4 usable months, else ATI = NaN
+  snow:                        # MOD10CM permanent snow/ice: every usable month >= min_frac_pct snow
+    min_frac_pct: 50
+    min_months: 3
 
 known_analogs:
   atacama:       {name: "Atacama Desert",             lat: -24.5,  lon: -69.25}
@@ -57,3 +65,19 @@ known_analogs:
   mauna_kea:     {name: "Mauna Kea flanks",           lat: 19.8,   lon: -155.5}
   rio_tinto:     {name: "Rio Tinto",                  lat: 37.7,   lon: -6.6}
   haughton:      {name: "Haughton Crater",            lat: 75.4,   lon: -89.7}
+
+# Blind validation set: published Mars analogs NOT used while developing or tuning the method. Scored once with the
+# frozen settings (src/validate.py) and reported as-is in results/validation.md.
+blind_analogs:
+  pilbara:        {name: "Pilbara, North Pole Dome (Dresser Fm.)", lat: -21.17, lon: 119.43,
+                   ref: "Van Kranendonk et al. 2008, Precambrian Res. 167, 93 (3.48 Ga hydrothermal/biosignature analog; Mars 2020 rehearsal site)"}
+  dry_valleys:    {name: "McMurdo Dry Valleys (Taylor Valley)", lat: -77.62, lon: 163.0,
+                   ref: "Doran et al. 2002, JGR 107, 4772 (hyper-arid polar desert; outside the analysis latitude range -> expect n/a)"}
+  lonar:          {name: "Lonar Crater", lat: 19.976, lon: 76.508,
+                   ref: "Maloof et al. 2010, GSA Bull. 122, 109 (impact crater in basalt)"}
+  dallol:         {name: "Dallol / Danakil", lat: 14.24, lon: 40.30,
+                   ref: "Cavalazzi et al. 2019, Astrobiology 19, 553 (hydrothermal, hyper-saline, acidic)"}
+  svalbard:       {name: "Svalbard, Bockfjord volcanic complex (Sverrefjell)", lat: 79.43, lon: 13.30,
+                   ref: "Treiman et al. 2002, EPSL 204, 323 (carbonate-bearing volcanics, AMASE expeditions)"}
+  kilbourne:      {name: "Kilbourne Hole maar", lat: 31.97, lon: -106.97,
+                   ref: "Hoffer 1976, NM Bur. Mines Circ. 149 (maar crater; NASA Desert RATS / astronaut geology training)"}

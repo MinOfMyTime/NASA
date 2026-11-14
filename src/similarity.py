@@ -57,17 +57,25 @@ def dimension_score(feats: dict, fp: dict, dim: str, cfg) -> np.ndarray:
     return np.exp(-(d2 / n) / (2 * sig * sig)).astype(np.float32)
 
 
-def overall_score(scores: dict, weights: dict) -> np.ndarray:
+def overall_score(scores: dict, weights: dict, require_all: bool = True) -> np.ndarray:
+    """Weighted mean of dimension scores. With require_all (default) a cell whose weighted dimension is n/a gets n/a:
+    otherwise a missing dimension (e.g. mineral signal unavailable) would silently hand its weight to the others and
+    such cells would win the ranking (this happened in round 1, see REPORT.md)."""
     num = 0.0
     den = 0.0
+    missing = None
     for d, s in scores.items():
         w = float(weights.get(d, 0.0))
         ok = np.isfinite(s)
         num = num + np.where(ok, s, 0.0) * w
         den = den + ok * w
+        if w > 0:
+            missing = ~ok if missing is None else (missing | ~ok)
     with np.errstate(invalid="ignore", divide="ignore"):
         out = (num / den).astype(np.float32)
     out[den == 0] = np.nan
+    if require_all and missing is not None:
+        out[missing] = np.nan
     return out
 
 
@@ -87,10 +95,20 @@ def main(targets=None):
     for t in targets or fps:
         scores = {}
         for dim in DIMS:
-            s = dimension_score(feats, fps[t], dim, cfg)
+            if dim == "extremes":
+                # Weighted score uses the RELATIVE extremes score (Mars-likeness vs the rest of Earth's land).
+                # The absolute comparison is exported separately as the "Mars gap" and is not weighted.
+                gap = dimension_score(feats, fps[t], dim, cfg)
+                gap[~valid] = np.nan
+                np.save(out / f"{t}_gap.npy", gap)
+                s = np.array(feats["extremes_rel"], dtype=np.float32).copy()
+            else:
+                s = dimension_score(feats, fps[t], dim, cfg)
             if dim == "mineral":
-                # vegetated land (NDVI >= ndvi_max_for_mineral) has no exposed mineral surface to match -> 0
-                s[valid & ~np.isfinite(s)] = 0.0
+                # vegetated land (NDVI >= ndvi_max_for_mineral) has no exposed mineral surface to match -> 0;
+                # bare cells with no usable TIR signal (flat spectrum / too few ASTER looks) stay NaN = n/a
+                low = np.asarray(feats["mineral_lowsignal_mask"]).astype(bool)
+                s[valid & ~np.isfinite(s) & ~low] = 0.0
             s[~valid] = np.nan
             scores[dim] = s
             np.save(out / f"{t}_{dim}.npy", s)

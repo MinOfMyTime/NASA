@@ -93,13 +93,61 @@ def read_mcd43c3(path):
     return a
 
 
-def apparent_thermal_inertia(albedo, lst_day, lst_night, min_dt=1.0):
-    """ATI = (1 - albedo) / (LST_day - LST_night). Cells with dT < min_dt K are undefined (NaN)."""
+def apparent_thermal_inertia(albedo, lst_day, lst_night, min_dt=10.0, min_day_k=273.15):
+    """ATI = (1 - albedo) / (LST_day - LST_night) for one month.
+
+    A month is usable only when dT >= min_dt (default 10 K) and LST_day > min_day_k: ATI diverges as dT -> 0, which
+    happens in polar day/night and with near-coincident overpasses, and would otherwise mimic bedrock-like thermal
+    inertia at high latitudes (the artifact documented in REPORT.md).
+    """
     dt = lst_day - lst_night
     with np.errstate(invalid="ignore", divide="ignore"):
         ati = (1.0 - albedo) / dt
-    ati[~(dt >= min_dt)] = np.nan
+    ati[~((dt >= min_dt) & (lst_day > min_day_k))] = np.nan
     return ati.astype(np.float32)
+
+
+def annual_ati(albedo, day, night, min_dt=10.0, min_day_k=273.15, min_months=4):
+    """Median monthly ATI over usable months; NaN where fewer than min_months months are usable."""
+    ati_m = np.stack([apparent_thermal_inertia(albedo, day[i], night[i], min_dt, min_day_k) for i in range(day.shape[0])])
+    n_ok = np.isfinite(ati_m).sum(axis=0)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        ati = np.nanmedian(ati_m, axis=0).astype(np.float32)
+    ati[n_ok < min_months] = np.nan
+    return ati, n_ok.astype(np.uint8)
+
+
+def read_mod10cm(path):
+    """MOD10CM Snow_Cover_Monthly_CMG: 0-100 = % snow; >100 are flags (107 lake ice, 111 night, 237 inland water,
+    239 ocean, 250 cloud, 253 no decision, 254 saturated, 255 fill) -> NaN."""
+    raw, _ = read_sds(path, "Snow_Cover_Monthly_CMG")
+    s = raw.astype(np.float32)
+    s[raw > 100] = np.nan
+    return s
+
+
+def permanent_snow(stack, min_frac=50.0, min_months=3):
+    """True where every usable month has >= min_frac % snow and at least min_months months are usable."""
+    n_ok = np.isfinite(stack).sum(axis=0)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        mn = np.nanmin(stack, axis=0)
+    return (n_ok >= min_months) & (mn >= min_frac)
+
+
+def snow_features(cfg):
+    files = sorted((RAW / "MOD10CM").glob("MOD10CM.A*.hdf"))
+    assert len(files) == 12, f"need 12 MOD10CM files, found {len(files)}"
+    stack = np.stack([read_mod10cm(f) for f in files])
+    s = cfg["masks"]["snow"]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        out = {"snow_min_pct": np.nanmin(stack, axis=0).astype(np.float32),
+               "snow_mean_pct": np.nanmean(stack, axis=0).astype(np.float32)}
+    out["permanent_snow"] = permanent_snow(stack, s["min_frac_pct"], s["min_months"])
+    print(f"  MOD10CM: permanent snow/ice cells = {int(out['permanent_snow'].sum()):,}")
+    return out
 
 
 def modis_features(cfg):
@@ -124,16 +172,19 @@ def modis_features(cfg):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
         albedo = np.nanmean(np.stack(alb_stack), axis=0).astype(np.float32)
-        ati_m = np.stack([apparent_thermal_inertia(albedo, day[i], night[i]) for i in range(12)])
+        a = cfg["masks"]["ati"]
+        ati, n_ok = annual_ati(albedo, day, night, a["min_dt_k"], a["min_day_k"], a["min_months"])
         feats = {
             "albedo": albedo,
-            "ati": np.nanmedian(ati_m, axis=0).astype(np.float32),
+            "ati": ati,
+            "ati_n_months": n_ok,
             "diurnal_range_k": np.nanmean(day - night, axis=0).astype(np.float32),
             "lst_min_k": np.nanmin(night, axis=0).astype(np.float32),
             "lst_max_k": np.nanmax(day, axis=0).astype(np.float32),
             "lst_day_mean_k": np.nanmean(day, axis=0).astype(np.float32),
             "lst_night_mean_k": np.nanmean(night, axis=0).astype(np.float32),
         }
+    feats.update(snow_features(cfg))
     return feats
 
 
@@ -150,13 +201,14 @@ def read_ag_tile(path):
         ndvi = h["NDVI/Mean"][()].astype(np.float32)
         dem = h["ASTER GDEM/ASTGDEM"][()].astype(np.float32)
         lw = h["Land Water Map/LWmap"][()]
+        nobs = h["Observations/NumObs"][()]
     em[em == -9999] = np.nan
     em *= 0.001
     em[(em < 0.5) | (em > 1.0)] = np.nan  # physically impossible emissivities occur in ~12% of tiles
     ndvi[ndvi == -9999] = np.nan
     ndvi *= 0.01
     dem[dem == -9999] = np.nan
-    return top, left, em, ndvi, dem, lw
+    return top, left, em, ndvi, dem, lw, nobs
 
 
 def lw_is_land(lw):
@@ -202,11 +254,10 @@ class Accum:
 def aster_features(cfg):
     files = sorted((RAW / "AG1KM").glob("*.h5"))
     print(f"  AG1KM tiles: {len(files)}")
-    acc5 = Accum(G05, ["b10", "b11", "b12", "b13", "b14", "ndvi", "land", "dem5"])
-    acc30 = Accum(G30, ["dem"])
+    acc5 = Accum(G05, ["b10", "b11", "b12", "b13", "b14", "ndvi", "land", "nobs"])
     for i, f in enumerate(files):
         try:
-            top, left, em, ndvi, dem, lw = read_ag_tile(f)
+            top, left, em, ndvi, dem, lw, nobs = read_ag_tile(f)
         except Exception as e:  # noqa: BLE001
             print(f"  WARN unreadable tile {f.name}: {e}")
             continue
@@ -216,13 +267,12 @@ def aster_features(cfg):
             acc5.add_tile(top, left, f"b1{b}", e)
         acc5.add_tile(top, left, "ndvi", np.where(land, ndvi, np.nan))
         acc5.add_tile(top, left, "land", land.astype(np.float32))
-        acc5.add_tile(top, left, "dem5", dem)
-        acc30.add_tile(top, left, "dem", dem)
+        acc5.add_tile(top, left, "nobs", np.where(land, nobs.astype(np.float32), np.nan))
         if i % 2000 == 0:
             print(f"   {i}/{len(files)}", flush=True)
     em = {f"emis_b1{b}": acc5.mean(f"b1{b}") for b in range(5)}
     land_frac = acc5.mean("land")
-    return em, acc5.mean("ndvi"), land_frac, acc30.mean("dem"), acc5.mean("dem5")
+    return em, acc5.mean("ndvi"), land_frac, acc5.mean("nobs")
 
 
 def mineral_indices(b10, b11, b12, b13, b14):
@@ -251,15 +301,16 @@ def main():
     if cache.exists() and cache.stat().st_mtime > Path(__file__).stat().st_mtime:
         z = np.load(cache)
         em = {f"emis_b1{b}": z[f"emis_b1{b}"] for b in range(5)}
-        ndvi, land_frac = z["ndvi"], z["land_frac"]
+        ndvi, land_frac, nobs = z["ndvi"], z["land_frac"], z["nobs"]
     else:
-        em, ndvi, land_frac, _, _ = aster_features(cfg)
-        np.savez(cache, ndvi=ndvi, land_frac=land_frac, **em)
+        em, ndvi, land_frac, nobs = aster_features(cfg)
+        np.savez(cache, ndvi=ndvi, land_frac=land_frac, nobs=nobs, **em)
     # Topography DEM: Copernicus GLO-90 averaged to 1/30 deg (src/download_dem.py); no tile = ocean = sea level
     dem30 = np.load(ROOT / "data" / "processed" / "earth_dem_30ppd.npy")
     feats.update(em)
     feats["ndvi"] = ndvi
     feats["land_frac"] = land_frac
+    feats["aster_nobs"] = nobs
     r_, _ = G30.rowcol(G05.lats, np.zeros(G05.nrow))
     _, c_ = G30.rowcol(np.zeros(G05.ncol), G05.lons)
     feats["elevation_m"] = dem30[np.ix_(r_, c_)]
@@ -276,7 +327,8 @@ def main():
     # masks
     lat2d = np.broadcast_to(G05.lats[:, None], G05.shape)
     land = land_frac >= 0.5
-    ice = ~(feats["lst_max_k"] > cfg["masks"]["ice_lst_max_k"])  # warmest month never above 0 C (or no LST)
+    # warmest month below 0 C, or MOD10CM permanent snow/ice
+    ice = ~(feats["lst_max_k"] > cfg["masks"]["ice_lst_max_k"]) | feats["permanent_snow"]
     has = np.isfinite(feats["emis_b10"]) & np.isfinite(feats["lst_max_k"]) & np.isfinite(feats["ati"])
     valid = land & ~ice & has & (lat2d >= -60) & (lat2d <= 84)
     feats["land_mask"] = land
@@ -298,11 +350,24 @@ def main():
     ps = to_percentile(qi, q["quartz_index"])
     pf = 1.0 - to_percentile(contrast, q["tir_contrast"])
     cm, cs, cf = composition_vector(pm, ps, pf)
+    m = cfg["masks"]
+    # Near-flat TIR spectra (snow/frost/ice-contaminated pixels) and poorly observed cells carry no usable mineral signal.
+    mineral_ok = bare & (contrast >= m["tir_contrast_min"]) & (nobs >= m["aster_nobs_min"])
     for k, v in {"comp_mafic": cm, "comp_silica": cs, "comp_fines": cf}.items():
         v = v.astype(np.float32)
-        v[~bare] = np.nan  # TIR mineral signal is not interpretable under vegetation
+        v[~mineral_ok] = np.nan
         feats[k] = v
     feats["mineral_bare_mask"] = bare
+    feats["mineral_ok_mask"] = mineral_ok
+    feats["mineral_lowsignal_mask"] = bare & ~mineral_ok
+
+    # Relative thermal-extremes score: how Mars-like a cell is compared with the rest of Earth's land (large diurnal
+    # range, cold nights). Target-independent; the absolute comparison is kept separately as the "Mars gap".
+    wv = np.where(valid, w, 0.0)
+    q["diurnal_range_k"] = quantile_table(feats["diurnal_range_k"], wv)
+    q["lst_min_k"] = quantile_table(feats["lst_min_k"], wv)
+    feats["extremes_rel"] = (0.5 * (to_percentile(feats["diurnal_range_k"], q["diurnal_range_k"])
+                                    + (1.0 - to_percentile(feats["lst_min_k"], q["lst_min_k"])))).astype(np.float32)
 
     for k, v in feats.items():
         np.save(OUT / f"{k}.npy", np.asarray(v))

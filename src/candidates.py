@@ -1,7 +1,7 @@
 """Candidate extraction: top 0.5% of valid land cells -> 8-connected regions -> ranked list.
 
-Regions smaller than candidates.min_cells are dropped as speckle. Rank metric = mean overall score + area_weight *
-log10(area km^2) (mean score dominates; area breaks ties between similarly scoring regions). Regions within `exclude_known_km` of a known analog are flagged `near_known`;
+Regions smaller than candidates.min_cells are dropped as speckle. Regions are ranked by mean overall score; area is
+reported as a column. Regions within `exclude_known_km` of a known analog are flagged `near_known`;
 the remainder are the 'under-studied' discovery candidates.
 """
 from __future__ import annotations
@@ -78,7 +78,8 @@ def extract(t, cfg, gdf=None):
         })
     df = pd.DataFrame(rows)
     df = df[df.n_cells >= cfg["candidates"]["min_cells"]]
-    df["rank_metric"] = df["mean_score"] + cfg["candidates"]["area_weight"] * np.log10(df["area_km2"])
+    # Ranked by mean overall score (area is shown as a column, not used for ranking)
+    df["rank_metric"] = df["mean_score"]
     df = df.sort_values("rank_metric", ascending=False).reset_index(drop=True)
     known = cfg["known_analogs"]
     near, dist = [], []
