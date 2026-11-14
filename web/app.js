@@ -12,9 +12,12 @@ const MARS_VS_EARTH = [
 const REV_DIMS = { topo: ["log_relief", "slope_deg", "log_rough", "tpi_m"], thermo: ["pct_ti", "albedo"], mineral: ["comp_mafic", "comp_silica", "comp_fines"] };
 
 const S = { meta: null, target: null, layer: "overall", weights: {}, dims: {}, gap: null, earth: {}, mars: {}, overlay: null,
-  list: "discovery", markers: null, sel: null, mode: "default", marsMap: null, marsOverlay: null, marsMarkers: null, tourTimer: null };
+  list: "discovery", markers: null, sel: null, mode: "default", marsMap: null, marsOverlay: null, marsMarkers: null, tourTimer: null, tourRun: 0 };
 
 const $ = (id) => document.getElementById(id);
+const ordinal = (n) => { const v = Math.round(n), t = v % 100; return v + (t >= 11 && t <= 13 ? "th" : ["th", "st", "nd", "rd"][v % 10] || "th"); };
+const MARS_KM_PER_DEG = 59.3;
+const candExtra = (c) => ({ mode: S.mode, cand: c, target: S.target });
 const fmt = (v, d = 2) => (v === null || v === undefined || Number.isNaN(v) ? "n/a" : Number(v).toFixed(d));
 
 async function loadBin(path) {
@@ -40,7 +43,10 @@ async function loadTarget(t) {
   $("target-desc").textContent = `${fp.lat.toFixed(1)}°, ${fp.lon_e360.toFixed(1)}°E (Mars, east-positive 0–360). Fingerprint = median & IQR over a ${fp.window_deg}°×${fp.window_deg}° window.`;
   renderLists();
   render();
-  if (S.sel) showCell(S.sel.lat, S.sel.lon, S.sel.title);
+  if (S.sel) {
+    const e = S.sel.extra, stale = e && e.cand && e.target !== t;   // a candidate of another target is just a cell here
+    showCell(S.sel.lat, S.sel.lon, stale ? "Selected cell" : S.sel.title, stale ? undefined : e);
+  }
 }
 
 function overallAt(i) {
@@ -90,7 +96,7 @@ function render() {
   const url = cv.toDataURL();
   const bounds = [[latBot, -180], [latTop, 180]];
   if (S.overlay) S.overlay.setUrl(url); else S.overlay = L.imageOverlay(url, bounds, { opacity: 0.85, interactive: false }).addTo(S.map);
-  $("legend-label").textContent = S.layer === "overall" ? "overall similarity (weighted; n/a where any dimension is missing)"
+  $("legend-label").textContent = S.layer === "overall" ? "overall similarity (weighted; n/a where any dimension is missing) · diagonal stripes in the far north = ASTER swath artifact"
     : S.layer === "gap" ? "Mars gap: absolute thermal-extremes match (not weighted)" : `${S.meta.dim_labels[S.layer]} similarity`;
 }
 
@@ -167,12 +173,22 @@ async function showCell(lat, lon, title, extra) {
   $("p-mode").textContent = S.mode === "default" ? "" : `Mission mode: ${S.meta.mission_modes[S.mode].label}` + (extra && extra.mode ? ` · listed under this mode` : "");
   if (i < 0) { $("p-score").textContent = "outside grid"; return; }
   await ensureEarth();
-  const scores = Object.fromEntries(S.meta.dims.map((d) => [d, S.dims[d][i] === NODATA ? NaN : S.dims[d][i] / 254]));
-  const ov = overallAt(i);
+  // A listed candidate is a REGION: show its region-mean scores so the panel agrees with the list. A free click shows one cell.
+  const cand = extra && extra.cand && extra.target === S.target ? extra.cand : null;
+  const scores = Object.fromEntries(S.meta.dims.map((d) => {
+    if (cand) { const v = cand[`s_${d}`]; return [d, v === null || v === undefined ? NaN : v]; }
+    return [d, S.dims[d][i] === NODATA ? NaN : S.dims[d][i] / 254];
+  }));
+  let ov = overallAt(i);
+  if (cand) {
+    let num = 0, den = 0, bad = false;
+    for (const d of S.meta.dims) { const w = S.weights[d]; if (Number.isNaN(scores[d])) { if (w > 0) bad = true; continue; } num += w * scores[d]; den += w; }
+    ov = bad || den === 0 ? NaN : num / den;
+  }
   const missing = S.meta.dims.filter((d) => Number.isNaN(scores[d]) && S.weights[d] > 0);
   $("p-score").innerHTML = Number.isNaN(ov)
     ? `n/a <small>${missing.length ? `(${missing.map((d) => S.meta.dim_labels[d]).join(", ")} not scoreable here: ${missing.includes("mineral") ? "no usable TIR mineral signal" : "water, ice, polar ATI gap or data gap"})` : "(water, ice, or data gap)"}</small>`
-    : `${fmt(ov)} <small>overall similarity (current weights)</small>`;
+    : `${fmt(ov)} <small>${cand ? `overall similarity, mean of the region's ${cand.n_cells} cells (current weights)` : "overall similarity of this cell (current weights)"}</small>`;
   radar(scores);
   gapBars(i);
   const lab = S.meta.dim_labels;
@@ -194,7 +210,7 @@ async function showCell(lat, lon, title, extra) {
     return `<tr><td>${f.label}${f.unit ? ` <small class="muted">${f.unit}</small>` : ""}</td><td>${mars}</td><td>${fmt(earthVal(k, i))}</td></tr>`;
   });
   $("p-table").querySelector("tbody").innerHTML = rows.join("") +
-    `<tr><td colspan="3" class="small muted">* Mars thermal extremes from a 1-D thermal model driven by the site's TES thermal inertia and albedo. Thermal inertia and composition are compared as within-planet percentiles. "Thermal extremes (rel.)" in the radar is Earth-relative: how Mars-like this cell is compared with the rest of Earth's land.</td></tr>`;
+    `<tr><td colspan="3" class="small muted">${cand ? "Scores above are region means; the Earth column in this table is the cell at the region's centre. " : ""}* Mars thermal extremes from a 1-D thermal model driven by the site's TES thermal inertia and albedo. Thermal inertia and composition are compared as within-planet percentiles. "Thermal extremes (rel.)" in the radar is Earth-relative: how Mars-like this cell is compared with the rest of Earth's land.</td></tr>`;
 }
 
 // ---------------------------------------------------------------- reverse search: where on Mars?
@@ -262,7 +278,9 @@ async function reverseSearch() {
     let best = null, bd = 1e9;
     for (const f of S.meta.mars.named) { const d = hav(p.lat, p.lon, f.lat, f.lon_e360); if (d < bd) { bd = d; best = f; } }
     L.marker([p.lat, p.lon], { icon: L.divIcon({ className: "mars-marker", iconSize: [12, 12] }) }).addTo(S.marsMarkers);
-    return `<li><span class="sc">${fmt(p.s)}</span>${best.name} <small class="muted">(${p.lat.toFixed(1)}°, ${p.lon.toFixed(1)}°E; ${bd.toFixed(0)}° from the feature centre)</small></li>`;
+    const km = Math.round(bd * MARS_KM_PER_DEG / 10) * 10;
+    const where = bd <= 6 ? `${best.name} <small class="muted">~${km.toLocaleString()} km from its centre</small>` : `Unnamed spot <small class="muted">nearest named feature: ${best.name}, ~${km.toLocaleString()} km away</small>`;
+    return `<li><span class="sc">${fmt(p.s)}</span>${where} <small class="muted">(${p.lat.toFixed(1)}°, ${p.lon.toFixed(1)}°E)</small></li>`;
   }).join("");
 }
 
@@ -292,12 +310,12 @@ function renderLists() {
   $("cands").querySelectorAll("li[data-k]").forEach((li) => li.addEventListener("click", () => {
     const c = cands[+li.dataset.k];
     S.map.setView([c.lat, c.lon], 6);
-    showCell(c.lat, c.lon, `Candidate #${c.rank} — ${c.country || ""}`, { mode: S.mode });
+    showCell(c.lat, c.lon, `Candidate #${c.rank} — ${c.country || ""}`, candExtra(c));
   }));
   const fillSites = (id, val, prefix) => {
     const vals = Object.values(val || {});
     $(id).innerHTML = vals.map((v, k) =>
-      `<li data-k="${k}"><span class="sc">${v.percentile === null ? "n/a" : fmt(v.percentile, 0) + "th pct"}</span>${v.name}${v.note ? ` <small class="muted">(${v.note})</small>` : ""}</li>`).join("");
+      `<li data-k="${k}"><span class="sc">${v.percentile === null ? "n/a" : ordinal(v.percentile) + " pct"}</span>${v.name}${v.note ? ` <small class="muted">(${v.note})</small>` : ""}</li>`).join("");
     $(id).querySelectorAll("li").forEach((li) => li.addEventListener("click", () => {
       const v = vals[+li.dataset.k];
       S.map.setView([v.lat, v.lon], 6);
@@ -310,7 +328,7 @@ function renderLists() {
   if (S.markers) S.markers.remove();
   S.markers = L.layerGroup().addTo(S.map);
   cands.slice(0, 25).forEach((c) => L.marker([c.lat, c.lon], { icon: L.divIcon({ className: "cand-marker", iconSize: [12, 12] }), title: `#${c.rank} ${c.country}` })
-    .on("click", () => showCell(c.lat, c.lon, `Candidate #${c.rank} — ${c.country || ""}`, { mode: S.mode })).addTo(S.markers));
+    .on("click", () => showCell(c.lat, c.lon, `Candidate #${c.rank} — ${c.country || ""}`, candExtra(c))).addTo(S.markers));
   [...known, ...blind].forEach((v) => L.marker([v.lat, v.lon], { icon: L.divIcon({ className: "known-marker", iconSize: [10, 10] }), title: v.name })
     .on("click", () => showCell(v.lat, v.lon, `Known analog — ${v.name}`)).addTo(S.markers));
 }
@@ -359,6 +377,8 @@ function buildControls() {
   $("reverse-btn").addEventListener("click", reverseSearch);
   $("blind-btn").addEventListener("click", () => { renderBlind(); $("blind-panel").classList.remove("hidden"); });
   $("close-blind").addEventListener("click", () => $("blind-panel").classList.add("hidden"));
+  $("blind-panel").addEventListener("click", (e) => { if (e.target === $("blind-panel")) $("blind-panel").classList.add("hidden"); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("blind-panel").classList.add("hidden"); });
   $("tour-btn").addEventListener("click", tour);
 }
 
@@ -386,23 +406,29 @@ function renderBlind() {
 
 // ---------------------------------------------------------------- story tour
 async function tour() {
-  if (S.tourTimer) { clearTimeout(S.tourTimer); S.tourTimer = null; $("caption").classList.add("hidden"); $("tour-btn").textContent = "▶ Tour (60 s)"; return; }
+  if (S.tourTimer) { clearTimeout(S.tourTimer); S.tourTimer = null; S.tourRun++; $("caption").classList.add("hidden"); $("tour-btn").textContent = "▶ Tour (60 s)"; return; }
   $("tour-btn").textContent = "■ Stop tour";
+  const run = ++S.tourRun;
   const pick = (t, n) => (S.meta.candidates[t] || []).filter((c) => c.list === "discovery")[n];
   const steps = [
     { t: "meridiani", c: pick("meridiani", 0), z: 6, cap: "Meridiani's #1 look-alike: a flat, dust-free, mafic plain. EMIT later found hematite here, Meridiani's signature mineral, without it ever being an input." },
     { t: "jezero", c: pick("jezero", 0), z: 6, cap: "Jezero's best under-studied twin: matching relief, thermal inertia and TIR composition, thousands of km from any classic analog site." },
-    { t: "gale", c: pick("gale", 0), z: 6, cap: "Gale's: layered mountain-desert terrain. Round 1 put Gale's twins in Greenland; a polar artifact in apparent thermal inertia was found and fixed." },
-    { t: S.target, c: S.meta.reverse_demo, z: 7, cap: "Any place works both ways: click the Jordan Valley and ask where on Mars it fits best.", reverse: true },
+    { t: "gale", c: pick("gale", 0), z: 6, cap: "Gale's top match after our fix. Round 1 put Gale's twins in Greenland; we traced that to a polar artifact in apparent thermal inertia and removed it." },
+    { t: null, c: S.meta.reverse_demo, z: 7, cap: "Any place works both ways: click the Jordan Valley and ask where on Mars it fits best.", reverse: true },
   ].filter((s) => s.c);
   let k = 0;
   const next = async () => {
     if (k >= steps.length) { $("caption").classList.add("hidden"); S.tourTimer = null; $("tour-btn").textContent = "▶ Tour (60 s)"; renderBlind(); $("blind-panel").classList.remove("hidden"); return; }
     const s = steps[k++];
-    if (s.t !== S.target) { $("target").value = s.t; await loadTarget(s.t); }
+    S.sel = null; $("panel").classList.add("hidden");                 // never show the previous step's site under a new target
+    if (s.t && s.t !== S.target) { $("target").value = s.t; await loadTarget(s.t); }
+    if (S.tourRun !== run) return;
     S.map.flyTo([s.c.lat, s.c.lon], s.z, { duration: 3 });
     $("caption").textContent = s.cap; $("caption").classList.remove("hidden");
-    setTimeout(() => showCell(s.c.lat, s.c.lon, s.c.name || `Candidate #${s.c.rank} — ${s.c.country}`).then(() => { if (s.reverse) reverseSearch(); }), 3200);
+    setTimeout(() => {
+      if (S.tourRun !== run) return;
+      showCell(s.c.lat, s.c.lon, s.c.name || `Candidate #${s.c.rank} — ${s.c.country}`, s.t ? candExtra(s.c) : undefined).then(() => { if (s.reverse && S.tourRun === run) reverseSearch(); });
+    }, 3200);
     S.tourTimer = setTimeout(next, 13000);
   };
   next();

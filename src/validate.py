@@ -107,7 +107,8 @@ def main():
     for t in fps:
         ov = np.load(PROC / "similarity" / f"{t}_overall.npy", mmap_mode="r")
         dims = {d: np.load(PROC / "similarity" / f"{t}_{d}.npy", mmap_mode="r") for d in DIMS}
-        res[t] = score_sites(cfg["known_analogs"], t, ov, dims, g, feats, valid)
+        dev = {k: v for k, v in cfg["known_analogs"].items() if not v.get("exclude_only")}  # validation set stays frozen
+        res[t] = score_sites(dev, t, ov, dims, g, feats, valid)
         blind[t] = score_sites(cfg["blind_analogs"], t, ov, dims, g, feats, valid)
         null[t] = null_test(np.asarray(ov), valid, rng)
         n = null[t]

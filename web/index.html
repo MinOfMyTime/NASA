@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AnalogFinder — Mars analogs on Earth by physical fingerprint</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-  <link rel="stylesheet" href="style.css?v=4" />
+  <link rel="stylesheet" href="style.css?v=7" />
 </head>
 <body>
   <header>
@@ -53,6 +53,7 @@
     <div id="map-wrap">
       <div id="map"></div>
       <div id="caption" class="hidden"></div>
+    <div id="legend"><span>0</span><div class="bar"></div><span>1</span><em id="legend-label">overall similarity</em></div>
     </div>
     <aside id="panel" class="hidden">
       <button id="close-panel" aria-label="Close">×</button>
@@ -74,7 +75,6 @@
       <p class="muted small">Scores are 0.25° aggregates of the 0.05° analysis grid. Every value traces to <code>src/*.py</code> and the datasets on the Methods page.</p>
     </aside>
   </main>
-  <div id="legend"><span>0</span><div class="bar"></div><span>1</span><em id="legend-label">overall similarity</em></div>
   <div id="blind-panel" class="modal hidden">
     <div class="modal-box">
       <button id="close-blind" aria-label="Close">×</button>
@@ -83,6 +83,6 @@
     </div>
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="app.js?v=6"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>
