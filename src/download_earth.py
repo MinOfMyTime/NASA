@@ -20,11 +20,43 @@ CFG = yaml.safe_load(open(ROOT / "config.yaml"))
 
 
 def login():
+    """Token (EARTHDATA_TOKEN, sent as a Bearer header) or username/password (env vars or ~/.netrc) via earthaccess."""
+    global SESSION
+    tok = os.environ.get("EARTHDATA_TOKEN")
+    tok_file = Path.home() / ".earthdata_token"  # private, outside the repo
+    if not tok and tok_file.exists():
+        tok = tok_file.read_text().strip()
+    if tok:
+        import requests
+
+        SESSION = requests.Session()
+        SESSION.headers["Authorization"] = f"Bearer {tok}"
+        return SESSION
     strategy = "environment" if os.environ.get("EARTHDATA_USERNAME") else "netrc"
     auth = earthaccess.login(strategy=strategy)
     if not auth or not auth.authenticated:
         raise SystemExit(f"Earthdata login failed (strategy={strategy}). Check credentials / account status.")
-    return auth
+    SESSION = earthaccess.get_requests_https_session()
+    return SESSION
+
+
+SESSION = None
+
+
+def _get(url, dest):
+    tmp = dest.with_suffix(dest.suffix + ".part")
+    for attempt in range(4):
+        try:
+            with SESSION.get(url, stream=True, timeout=300, allow_redirects=True) as r:
+                r.raise_for_status()
+                with open(tmp, "wb") as f:
+                    for chunk in r.iter_content(1 << 20):
+                        f.write(chunk)
+            tmp.rename(dest)
+            return dest
+        except Exception as e:  # noqa: BLE001
+            err = e
+    raise RuntimeError(f"download failed {url}: {err}")
 
 
 def fetch(results, sub, threads=8):
@@ -34,7 +66,13 @@ def fetch(results, sub, threads=8):
     todo = [g for g in results if Path(g.data_links()[0]).name not in have]
     print(f"{sub}: {len(results)} granules, {len(todo)} to download")
     if todo:
-        earthaccess.download(todo, str(out), threads=threads)
+        from concurrent.futures import ThreadPoolExecutor
+
+        urls = [g.data_links()[0] for g in todo]
+        with ThreadPoolExecutor(threads) as ex:
+            for i, _ in enumerate(ex.map(lambda u: _get(u, out / Path(u).name), urls), 1):
+                if i % 200 == 0 or i == len(urls):
+                    print(f"  {sub}: {i}/{len(urls)}", flush=True)
     return out
 
 
@@ -74,7 +112,12 @@ def emit(lat, lon, half=0.25):
     r = earthaccess.search_data(short_name="EMITL2BMIN", version="001",
                                 bounding_box=(lon - half, lat - half, lon + half, lat + half), count=20)
     print(f"EMIT L2B MIN granules near ({lat},{lon}): {len(r)}")
-    fetch(r[:4], "EMITL2BMIN")
+    links = [u for g in r[:4] for u in g.data_links() if "_MIN_" in u]
+    out = RAW / "EMITL2BMIN"
+    out.mkdir(parents=True, exist_ok=True)
+    for u in links:
+        if not (out / Path(u).name).exists():
+            _get(u, out / Path(u).name)
     return r
 
 

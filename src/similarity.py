@@ -88,6 +88,9 @@ def main(targets=None):
         scores = {}
         for dim in DIMS:
             s = dimension_score(feats, fps[t], dim, cfg)
+            if dim == "mineral":
+                # vegetated land (NDVI >= ndvi_max_for_mineral) has no exposed mineral surface to match -> 0
+                s[valid & ~np.isfinite(s)] = 0.0
             s[~valid] = np.nan
             scores[dim] = s
             np.save(out / f"{t}_{dim}.npy", s)
