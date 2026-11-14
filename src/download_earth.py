@@ -99,7 +99,7 @@ def modis():
 def ag1km():
     r = earthaccess.search_data(short_name="AG1KM", version="003", count=-1)
     print("AG1KM tiles:", len(r))
-    fetch(r, "AG1KM", threads=16)
+    fetch(r, "AG1KM", threads=48)
 
 
 def ag100(lat, lon, half=0.5):

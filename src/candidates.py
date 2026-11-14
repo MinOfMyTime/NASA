@@ -1,7 +1,7 @@
 """Candidate extraction: top 0.5% of valid land cells -> 8-connected regions -> ranked list.
 
-Rank metric = mean overall score of the region + 0.02 * log10(area km^2) (mean score dominates; area breaks ties
-between similarly scoring regions). Regions within `exclude_known_km` of a known analog are flagged `near_known`;
+Regions smaller than candidates.min_cells are dropped as speckle. Rank metric = mean overall score + area_weight *
+log10(area km^2) (mean score dominates; area breaks ties between similarly scoring regions). Regions within `exclude_known_km` of a known analog are flagged `near_known`;
 the remainder are the 'under-studied' discovery candidates.
 """
 from __future__ import annotations
@@ -44,7 +44,11 @@ def country_of(gdf, lat, lon):
     hit = gdf[gdf.contains(p)]
     if len(hit):
         return hit.iloc[0]["NAME"]
-    d = gdf.distance(p)  # nearest (coastal centroids); degrees, only for labelling
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        d = gdf.distance(p)  # degrees; only used to label offshore/coastal centroids
     return gdf.iloc[int(d.idxmin())]["NAME"] + " (nearest)"
 
 
@@ -73,7 +77,8 @@ def extract(t, cfg, gdf=None):
             **{f"s_{d}": float(np.nanmean(np.asarray(dims[d])[rr, cc])) for d in DIMS},
         })
     df = pd.DataFrame(rows)
-    df["rank_metric"] = df["mean_score"] + 0.02 * np.log10(df["area_km2"])
+    df = df[df.n_cells >= cfg["candidates"]["min_cells"]]
+    df["rank_metric"] = df["mean_score"] + cfg["candidates"]["area_weight"] * np.log10(df["area_km2"])
     df = df.sort_values("rank_metric", ascending=False).reset_index(drop=True)
     known = cfg["known_analogs"]
     near, dist = [], []
@@ -86,7 +91,7 @@ def extract(t, cfg, gdf=None):
     df["near_known"] = near
     top = df.head(cfg["candidates"]["n_candidates"]).copy()
     disc = df[df.near_known == ""].head(cfg["candidates"]["n_candidates"]).copy()
-    out = pd.concat([top.assign(list="top"), disc.assign(list="discovery")]).drop_duplicates("region_id")
+    out = pd.concat([top.assign(list="top"), disc.assign(list="discovery")])  # a region may be in both lists
     if gdf is not None:
         out["country"] = [country_of(gdf, a, b) for a, b in zip(out.lat, out.lon)]
     out.insert(0, "rank", out.groupby("list").cumcount() + 1)

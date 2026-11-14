@@ -45,3 +45,20 @@ def test_mineral_indices_flat_spectrum():
     # quartz reststrahlen: low emissivity in B10 & B12 relative to B11 -> QI > 1
     qi, _, _ = mineral_indices(one * 0.85, one * 0.92, one * 0.84, one, one)
     assert (qi > 1).all()
+
+
+def test_accum_tile_placement():
+    from features_earth import Accum
+    from geo import Grid
+
+    acc = Accum(Grid(20, lon0=-180.0), ["x"])
+    tile = np.ones((100, 100), np.float32)
+    tile[:5, :5] = 3.0  # NW 5x5 px -> first 0.05 deg cell
+    acc.add_tile(-11.0, 154.0, "x", tile)
+    m = acc.mean("x")
+    r0, c0 = (90 + 11) * 20, (154 + 180) * 20
+    assert m[r0, c0] == 3.0 and m[r0 + 1, c0 + 1] == 1.0
+    assert np.isfinite(m[r0:r0 + 20, c0:c0 + 20]).all() and np.isnan(m[r0 - 1, c0])
+    acc30 = Accum(Grid(30, lon0=-180.0), ["x"])
+    acc30.add_tile(-11.0, 154.0, "x", np.ones((100, 100), np.float32))
+    assert np.isfinite(acc30.mean("x")[(90 + 11) * 30:(90 + 12) * 30, (154 + 180) * 30:(155 + 180) * 30]).all()

@@ -24,6 +24,9 @@ hypotheses) and confirmed by TES hematite at Meridiani (window median 0.125 > gl
 | `AG1KM/` | ASTER Global Emissivity Dataset 1 km, all 1×1 deg tiles (24,873) | doi:10.5067/ASTER/AG1KM.003 | 003 | Emissivity/Mean bands 10–14 (× 0.001), NDVI/Mean (× 0.01), ASTER GDEM (m), Land Water Map (0 land, 1 water) |
 | `AG100/` | ASTER GED 100 m tiles (case studies only) | doi:10.5067/ASTER/AG100.003 | 003 | zoom-ins |
 | `EMITL2BMIN/` | EMIT L2B Estimated Mineral Identification and Band Depth, 60 m (case studies only) | doi:10.5067/EMIT/EMITL2BMIN.001 | 001 | zoom-ins |
+| (no local file) `data/processed/earth_dem_30ppd.npy` | Copernicus DEM GLO-90 (public AWS bucket `copernicus-dem-90m`, 26,475 tiles, 1/4 COG overview area-averaged to 1/30 deg by `src/download_dem.py`) — https://copernicus-dem-90m.s3.amazonaws.com/ , doi:10.5270/ESA-c5d3d65 | 2021_1 | Earth topography (replaces ASTER GED GDEM, which is all-fill in 4,944 tiles) |
+| (streamed) | Copernicus DEM GLO-30 (public AWS bucket `copernicus-dem-30m`) | doi:10.5270/ESA-c5d3d65 | 2021_1 | case-study slopes |
+| `emit_mineral_grouping_matrix_20230503.csv` | EMIT L2B mineral grouping matrix (maps mineral IDs to the 10 core minerals) — https://github.com/emit-sds/emit-sds-l2b/blob/develop/data/mineral_grouping_matrix_20230503.csv | — | 20230503 | case studies |
 | `ne_50m_admin_0_countries.zip` | Natural Earth admin-0 countries 1:50m (public domain) — https://naciscdn.org/naturalearth/50m/cultural/ne_50m_admin_0_countries.zip | — | 5.x | country labels for candidates |
 
 ## Literature used for checks (not as data inputs)

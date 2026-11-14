@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AnalogFinder — Methods, data &amp; limitations</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>body{overflow:auto;height:auto} main{position:static;display:block}</style>
+</head>
+<body>
+<header>
+  <div class="brand"><strong>AnalogFinder</strong><span>Methods, data &amp; limitations</span></div>
+  <nav><a href="index.html">← Back to map</a></nav>
+</header>
+<main class="methods">
+<h1>Comparing physics, not photos</h1>
+<p>For each Mars target we build a five-dimension fingerprint from orbital data and build the <em>same</em> fingerprint for every
+0.05° land cell on Earth from NASA Earth data. The comparison leans on the fact that both planets have been mapped in the
+thermal infrared: TES on Mars, MODIS and ASTER on Earth.</p>
+
+<h2>Data</h2>
+<table>
+<tr><th>Dimension</th><th>Mars</th><th>Earth</th></tr>
+<tr><td>Topography</td><td>MOLA MEGDR 1/16° (3.705 km) — doi:10.17189/1519460</td><td>Copernicus GLO-90 DEM, area-averaged to 1/30° (3.706 km). (ASTER GED's GDEM layer is all-fill in 4,944 of 24,873 AG1KM tiles, including Hawaii, so it was replaced.)</td></tr>
+<tr><td>Thermophysics</td><td>TES nightside thermal inertia (Putzig &amp; Mellon 2005, doi:10.1016/j.icarus.2004.08.017), TES bolometric albedo</td><td>Apparent thermal inertia from MYD11C3 v061 day/night LST (doi:10.5067/MODIS/MYD11C3.061) and MCD43C3 v061 white-sky shortwave albedo (doi:10.5067/MODIS/MCD43C3.061)</td></tr>
+<tr><td>Mineralogy (TIR)</td><td>TES mineral maps (Bandfield 2002, doi:10.1029/2001JE001510)</td><td>ASTER GED emissivity bands 10–14</td></tr>
+<tr><td>Aridity</td><td>NDVI = 0 by definition</td><td>ASTER GED mean NDVI</td></tr>
+<tr><td>Thermal extremes</td><td>1-D thermal model driven by the window's TES TI + albedo (checked: Opportunity peak 295 K observed vs 295.3 K modelled)</td><td>MYD11C3 monthly LST, 2023</td></tr>
+</table>
+<p>Full provenance (URLs, versions, access dates): <code>data/SOURCES.md</code>.</p>
+
+<h2>Features (identical code on both planets: <code>src/topo.py</code>)</h2>
+<ul>
+<li><b>Matched physical scale.</b> Both DEMs have a 3.7 km N–S pixel. Local relief (max−min) and roughness (std of residuals after a least-squares plane) use a 5×5 px (~18.5 km) window. Mean slope uses central differences at the 3.7 km baseline. TPI (elevation minus the 9×9 px mean, ~33 km) acts as a crater/basin proxy. Relief and roughness are compared as log10(1+m).</li>
+<li><b>Thermophysics.</b> Earth ATI = (1 − albedo) / (LST<sub>day</sub> − LST<sub>night</sub>), using the monthly median over 2023. The units differ from Mars TI, so <b>both are converted to area-weighted within-planet percentiles</b>; Earth's reference population is bare ground (NDVI &lt; 0.3), since Mars is entirely bare. Albedo is compared directly (TES bolometric vs MODIS shortwave).</li>
+<li><b>Mineralogy.</b> Earth: quartz index QI = B11²/(B10·B12) and mafic index MI = B12·B14³/B13⁴ (Ninomiya, Fu &amp; Cudahy 2005, doi:10.1016/j.rse.2005.06.009), plus TIR spectral contrast (max−min emissivity, B10–B14), which drops for fine particulates. Mars: mafic = plagioclase + high-Ca + low-Ca pyroxene + olivine; silica = quartz + sheet silicates/high-Si glass; fines = surface dust. Each becomes a within-planet percentile (Earth fines = 1 − contrast percentile), and the three are normalised to a shared composition vector (mafic, silica-rich, dust/fines) that sums to 1. Earth cells with NDVI ≥ 0.3 get a mineral score of 0, because no mineral surface is exposed.</li>
+<li><b>Aridity.</b> Score = exp(−(max(NDVI,0)/0.1)²/2).</li>
+<li><b>Extremes.</b> Mean diurnal range (day−night), annual minimum and maximum LST.</li>
+</ul>
+
+<h2>Similarity</h2>
+<p>For feature f: z = (x − median<sub>target</sub>) / max(IQR<sub>target</sub>, floor<sub>f</sub>). For dimension d: s<sub>d</sub> = exp(−mean(z²)/2) ∈ [0,1].
+Overall = Σ w<sub>d</sub>s<sub>d</sub> / Σ w<sub>d</sub> (minimum scales: 0.10 for percentile features, 0.05 for albedo, see <code>config.yaml</code>; defaults: topography 0.25, thermophysics 0.25, mineralogy 0.30, aridity 0.15, extremes 0.05). The sliders recompute this in your browser from the per-dimension grids.
+The target fingerprint is the distribution (median, IQR) of every feature within a 1°×1° window around the site.
+Candidates: the top 0.5% of valid land cells → 8-connected regions of at least 4 cells → ranked by mean score + 0.02·log10(area). Regions within 150 km of a known analog are flagged; the rest are "under-studied".</p>
+
+<h2>Where the analogy breaks</h2>
+<ul>
+<li><b>Gravity</b> 0.38 g vs 1 g; <b>pressure</b> ~6 mbar CO₂ vs ~1013 mbar; <b>radiation</b>: no global magnetic field and a thin atmosphere; <b>temperature</b>: Mars nights at these sites fall to ~175–185 K (model).</li>
+<li><b>Percentile thermophysics:</b> "high-TI for Earth" is matched to "high-TI for Mars". This is a relative ranking, not a physical identity, and Earth ATI also responds to soil moisture and vegetation.</li>
+<li><b>Composition vector:</b> again within-planet percentiles. TES (~3 km spectra, unmixed end-members) and ASTER band ratios (5 bands) are different instruments, so the vector says "relatively mafic / silica-rich / fine for its planet".</li>
+<li><b>Topographic baseline</b> is set by the supplied 1/16° MOLA grid (3.7 km). Finer analogs (e.g. 100 m rover-scale) need the 463 m MOLA mosaic or HiRISE/CTX DEMs. E–W pixel size shrinks with cos(latitude) on both planets.</li>
+<li><b>Mars thermal extremes</b> come from a simple 1-D model (no atmospheric column, constant downwelling IR). It matches the one in-situ value we checked.</li>
+<li><b>Earth LST</b> is sampled at the Aqua overpass times (~13:30/01:30), so Earth's diurnal range is a lower bound on the true max−min.</li>
+<li>Gaps: ASTER GED is missing for frozen and permanently icy land, which shows up as no data. Haughton Crater does have ASTER GED and MODIS coverage, so it is scored. ASTER swath striping is visible at high northern latitudes (e.g. Siberia).</li>
+<li><b>Tuning disclosed:</b> after the first validation run we (a) switched Earth topography to Copernicus because of DEM gaps, (b) made Earth ATI percentiles bare-ground-relative, (c) raised the minimum scales for percentile features from 0.05 to 0.10 and for albedo from 0.02 to 0.05, and (d) required candidate regions of at least 4 cells.</li>
+</ul>
+<h2>Life as a trade-off</h2>
+<p>A low aridity score means vegetation, and vegetation is what makes a site un-Mars-like. For biosignature and life-detection instrument
+tests, though, an extreme environment that still hosts sparse life (Atacama, Rio Tinto) is the point. Lower the aridity weight to explore those.</p>
+<p class="muted">Code: <code>src/</code>. Every number on the map comes from those scripts and the datasets above.</p>
+</main>
+</body>
+</html>

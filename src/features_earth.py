@@ -144,22 +144,19 @@ def read_ag_tile(path):
     with h5py.File(path, "r") as h:
         glat = h["Geolocation/Latitude"][()]
         glon = h["Geolocation/Longitude"][()]
-        # Geolocation arrays span the tile edges inclusively (e.g. -12.0..-11.0 over 100 px), so rebuild
-        # pixel centres from the 1x1 deg tile extent.
-        ny, nx = glat.shape
+        # Geolocation arrays span the tile edges inclusively (e.g. -12.0..-11.0 over 100 px); only the extent is used.
         top, left = float(np.round(glat.max())), float(np.round(glon.min()))
-        lat = np.broadcast_to((top - (np.arange(ny) + 0.5) / ny)[:, None], (ny, nx))
-        lon = np.broadcast_to((left + (np.arange(nx) + 0.5) / nx)[None, :], (ny, nx))
         em = h["Emissivity/Mean"][()].astype(np.float32)
         ndvi = h["NDVI/Mean"][()].astype(np.float32)
         dem = h["ASTER GDEM/ASTGDEM"][()].astype(np.float32)
         lw = h["Land Water Map/LWmap"][()]
     em[em == -9999] = np.nan
     em *= 0.001
+    em[(em < 0.5) | (em > 1.0)] = np.nan  # physically impossible emissivities occur in ~12% of tiles
     ndvi[ndvi == -9999] = np.nan
     ndvi *= 0.01
     dem[dem == -9999] = np.nan
-    return lat, lon, em, ndvi, dem, lw
+    return top, left, em, ndvi, dem, lw
 
 
 def lw_is_land(lw):
@@ -178,14 +175,24 @@ class Accum:
         self.sum = {k: np.zeros(n, np.float64) for k in names}
         self.cnt = {k: np.zeros(n, np.float64) for k in names}
 
-    def add(self, lat, lon, name, val):
-        r, c = self.g.rowcol(lat, lon)
-        idx = (r * self.g.ncol + c).ravel()
+    def add_tile(self, top, left, name, val):
+        """Area-average a 1x1 deg tile (ny x nx pixels, north-up) into this grid. Only touches the tile footprint."""
+        ny, nx = val.shape
+        ppd = self.g.ppd
+        m = int(round(ppd))
+        lr = np.minimum((np.arange(ny) + 0.5) / ny * m, m - 1).astype(int)  # local row of each pixel
+        lc = np.minimum((np.arange(nx) + 0.5) / nx * m, m - 1).astype(int)
+        loc = (lr[:, None] * m + lc[None, :]).ravel()
         v = val.ravel()
         ok = np.isfinite(v)
-        n = self.g.nrow * self.g.ncol
-        self.sum[name] += np.bincount(idx[ok], weights=v[ok], minlength=n)
-        self.cnt[name] += np.bincount(idx[ok], minlength=n)
+        s = np.bincount(loc[ok], weights=v[ok], minlength=m * m).reshape(m, m)
+        c = np.bincount(loc[ok], minlength=m * m).reshape(m, m)
+        r0 = int(round((90.0 - top) * ppd))
+        c0 = int(round((left - self.g.lon0) * ppd)) % self.g.ncol
+        S = self.sum[name].reshape(self.g.shape)
+        C = self.cnt[name].reshape(self.g.shape)
+        S[r0:r0 + m, c0:c0 + m] += s
+        C[r0:r0 + m, c0:c0 + m] += c
 
     def mean(self, name):
         with np.errstate(invalid="ignore", divide="ignore"):
@@ -199,18 +206,18 @@ def aster_features(cfg):
     acc30 = Accum(G30, ["dem"])
     for i, f in enumerate(files):
         try:
-            lat, lon, em, ndvi, dem, lw = read_ag_tile(f)
+            top, left, em, ndvi, dem, lw = read_ag_tile(f)
         except Exception as e:  # noqa: BLE001
             print(f"  WARN unreadable tile {f.name}: {e}")
             continue
         land = lw_is_land(lw)
         for b in range(5):
             e = np.where(land, em[b], np.nan)
-            acc5.add(lat, lon, f"b1{b}", e)
-        acc5.add(lat, lon, "ndvi", np.where(land, ndvi, np.nan))
-        acc5.add(lat, lon, "land", land.astype(np.float32))
-        acc5.add(lat, lon, "dem5", dem)
-        acc30.add(lat, lon, "dem", dem)
+            acc5.add_tile(top, left, f"b1{b}", e)
+        acc5.add_tile(top, left, "ndvi", np.where(land, ndvi, np.nan))
+        acc5.add_tile(top, left, "land", land.astype(np.float32))
+        acc5.add_tile(top, left, "dem5", dem)
+        acc30.add_tile(top, left, "dem", dem)
         if i % 2000 == 0:
             print(f"   {i}/{len(files)}", flush=True)
     em = {f"emis_b1{b}": acc5.mean(f"b1{b}") for b in range(5)}
@@ -240,15 +247,26 @@ def main():
     print("MODIS ...")
     feats = modis_features(cfg)
     print("ASTER GED ...")
-    em, ndvi, land_frac, dem30, dem5 = aster_features(cfg)
+    cache = ROOT / "data" / "processed" / "aster_agg.npz"
+    if cache.exists() and cache.stat().st_mtime > Path(__file__).stat().st_mtime:
+        z = np.load(cache)
+        em = {f"emis_b1{b}": z[f"emis_b1{b}"] for b in range(5)}
+        ndvi, land_frac = z["ndvi"], z["land_frac"]
+    else:
+        em, ndvi, land_frac, _, _ = aster_features(cfg)
+        np.savez(cache, ndvi=ndvi, land_frac=land_frac, **em)
+    # Topography DEM: Copernicus GLO-90 averaged to 1/30 deg (src/download_dem.py); no tile = ocean = sea level
+    dem30 = np.load(ROOT / "data" / "processed" / "earth_dem_30ppd.npy")
     feats.update(em)
     feats["ndvi"] = ndvi
     feats["land_frac"] = land_frac
-    feats["elevation_m"] = dem5
+    r_, _ = G30.rowcol(G05.lats, np.zeros(G05.nrow))
+    _, c_ = G30.rowcol(np.zeros(G05.ncol), G05.lons)
+    feats["elevation_m"] = dem30[np.ix_(r_, c_)]
 
     print("Topography at matched scale (1/30 deg = 3.706 km) ...")
     t = cfg["topography"]
-    z = np.where(np.isfinite(dem30), dem30, 0.0).astype(np.float32)  # no tile = ocean -> sea level
+    z = np.where(np.isfinite(dem30), dem30, 0.0).astype(np.float32)  # no Copernicus tile = open water -> sea level
     topo30 = topo_features(z, G30.lats, t["pixel_km"], t["window_px"], t["tpi_window_px"])
     r, _ = G30.rowcol(G05.lats, np.zeros(G05.nrow))
     _, c = G30.rowcol(np.zeros(G05.ncol), G05.lons)
@@ -266,13 +284,13 @@ def main():
     feats["valid_mask"] = valid
 
     w = area_weights(G05.lats, G05.shape)
-    wv = np.where(valid, w, 0.0)
-    q = {"ati": quantile_table(feats["ati"], wv)}
+    bare = valid & (ndvi < cfg["masks"]["ndvi_max_for_mineral"])
+    wb = np.where(bare, w, 0.0)
+    # Mars TI percentiles describe an all-bare planet, so the Earth reference population is bare ground too.
+    q = {"ati": quantile_table(feats["ati"], wb)}
     feats["pct_ti"] = to_percentile(feats["ati"], q["ati"])
 
     qi, mi, contrast = mineral_indices(*(feats[f"emis_b1{b}"] for b in range(5)))
-    bare = valid & (ndvi < cfg["masks"]["ndvi_max_for_mineral"])
-    wb = np.where(bare, w, 0.0)
     for k, v in {"quartz_index": qi, "mafic_index": mi, "tir_contrast": contrast}.items():
         feats[k] = v
         q[k] = quantile_table(v, wb)

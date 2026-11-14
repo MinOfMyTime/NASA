@@ -222,10 +222,11 @@ async function main() {
   S.meta = await (await fetch("data/meta.json")).json();
   S.weights = { ...S.meta.weights };
   S.map = L.map("map", { worldCopyJump: true, minZoom: 2, maxZoom: 9 }).setView([20, 0], 2);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png", {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>', subdomains: "abcd" }).addTo(S.map);
+  const esri = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas";
+  L.tileLayer(`${esri}/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}`, {
+    attribution: "Basemap &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors", maxZoom: 16 }).addTo(S.map);
   S.map.createPane("labels"); S.map.getPane("labels").style.zIndex = 650; S.map.getPane("labels").style.pointerEvents = "none";
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png", { pane: "labels", subdomains: "abcd" }).addTo(S.map);
+  L.tileLayer(`${esri}/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}`, { pane: "labels", maxZoom: 16 }).addTo(S.map);
   S.map.on("click", (e) => showCell(e.latlng.lat, ((e.latlng.lng + 540) % 360) - 180));
   buildControls();
   await loadTarget(Object.keys(S.meta.targets)[0]);

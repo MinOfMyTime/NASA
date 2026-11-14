@@ -27,12 +27,12 @@ similarity:
   sigma: 1.0                   # s = exp(-d^2 / (2 sigma^2)), d = robust distance in target-IQR units
   # Minimum robust scale per feature (prevents a near-zero target IQR from making the score a spike).
   min_scale:
-    pct: 0.05                  # percentile-space features (0..1)
+    pct: 0.10                  # percentile-space features (0..1); cross-instrument percentile mapping is not finer than ~0.1
     log_relief: 0.15
     slope_deg: 0.3
     log_rough: 0.15
     tpi_m: 30.0
-    albedo: 0.02
+    albedo: 0.05                # TES bolometric vs MODIS shortwave band difference + 7.4 km TES pixels
     ndvi: 0.1
     diurnal_range_k: 10.0
     lst_min_k: 10.0
@@ -40,6 +40,8 @@ similarity:
 
 candidates:
   top_fraction: 0.005
+  min_cells: 4                 # drop speckle: regions smaller than 4 cells (~100 km2 at low latitude)
+  area_weight: 0.02            # rank = mean score + area_weight * log10(area km2)
   n_candidates: 25
   exclude_known_km: 150
 
