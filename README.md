@@ -2,6 +2,8 @@
 
 NASA Space Apps Challenge 2026 · *Find and characterize new terrestrial analogs for Moon/Mars landing sites and bases.*
 
+**Live app: https://minofmytime.github.io/NASA/** (static; deployed from `web/` by GitHub Actions on every push to `main`)
+
 Most analog work compares photos. **AnalogFinder compares physics.** For a Mars target (Jezero, Gale, Meridiani) we
 build a five-dimension fingerprint from orbital Mars data. We then build the *same* fingerprint for every 0.05° land cell on Earth
 from NASA Earth data and rank the planet, per dimension and overall. Both planets have been mapped in the
@@ -23,55 +25,80 @@ See [`web/methods.html`](web/methods.html) for formulas and limitations, and [`d
 
 ## Results
 
-Validation: percentile of each known analog among all valid 0.05° land cells (cell at the site coordinate; best cell within ±0.125°).
+Validation: percentile of each site among all valid 0.05° land cells (cell at the site coordinate; best cell within ±0.125°).
 
-| Known analog | Jezero Crater | Gale Crater | Meridiani Planum |
+**Development set** (used while building the method):
+
+| Site | Jezero Crater | Gale Crater | Meridiani Planum |
 |---|---|---|---|
-| Atacama Desert | 76 (best nearby 92) | 96 (best nearby 97) | 30 (best nearby 55) |
-| Mojave / Death Valley | 48 (best nearby 91) | 98 (best nearby 99) | 47 (best nearby 79) |
-| Utah MDRS | 33 (best nearby 79) | 68 (best nearby 88) | 36 (best nearby 63) |
-| Iceland highlands | 86 (best nearby 98) | 82 (best nearby 92) | 55 (best nearby 79) |
-| Mauna Kea flanks | 8 (best nearby 82) | 56 (best nearby 93) | 29 (best nearby 91) |
-| Rio Tinto | 92 (best nearby 93) | 83 (best nearby 84) | 88 (best nearby 88) |
-| Haughton Crater | 68 (best nearby 97) | 92 (best nearby 99) | 38 (best nearby 59) |
+| Atacama Desert | 88 (best nearby 98) | 98 (best nearby 99) | 36 (best nearby 69) |
+| Mojave / Death Valley | 75 (best nearby 96) | 100 (best nearby 100) | 54 (best nearby 81) |
+| Utah MDRS | 48 (best nearby 91) | 80 (best nearby 94) | 49 (best nearby 73) |
+| Iceland highlands | nan (best nearby 96) | nan (best nearby 92) | nan (best nearby 62) |
+| Mauna Kea flanks | 19 (best nearby 91) | 69 (best nearby 95) | 42 (best nearby 93) |
+| Rio Tinto | 97 (best nearby 97) | 89 (best nearby 89) | 70 (best nearby 71) |
+| Haughton Crater | nan (best nearby nan) | nan (best nearby nan) | nan (best nearby nan) |
 
-### Jezero Crater (Perseverance) — top 5 candidate regions (all within the top 0.5% of land)
+**Blind set** (published analogs scored once with the frozen settings; references in `results/validation.md`):
+
+| Site | Jezero Crater | Gale Crater | Meridiani Planum |
+|---|---|---|---|
+| Pilbara, North Pole Dome (Dresser Fm.) | 88 (best nearby 93) | 90 (best nearby 93) | 98 (best nearby 99) |
+| McMurdo Dry Valleys (Taylor Valley) | nan (best nearby nan) | nan (best nearby nan) | nan (best nearby nan) |
+| Lonar Crater | nan (best nearby nan) | nan (best nearby nan) | nan (best nearby nan) |
+| Dallol / Danakil | nan (best nearby 100) | nan (best nearby 100) | nan (best nearby 99) |
+| Svalbard, Bockfjord volcanic complex (Sverrefjell) | nan (best nearby nan) | nan (best nearby nan) | nan (best nearby nan) |
+| Kilbourne Hole maar | 89 (best nearby 95) | 84 (best nearby 93) | 91 (best nearby 97) |
+
+**Null test** (1,000 random valid land cells, seed 0):
+
+- Jezero Crater: median percentile 48; 24% of random cells reach the 75th percentile, 11% the 90th; histogram [0-25, 25-50, 50-75, 75-90, 90-100] = [262, 266, 231, 133, 108]
+- Gale Crater: median percentile 51; 24% of random cells reach the 75th percentile, 9% the 90th; histogram [0-25, 25-50, 50-75, 75-90, 90-100] = [255, 229, 275, 149, 92]
+- Meridiani Planum: median percentile 49; 25% of random cells reach the 75th percentile, 11% the 90th; histogram [0-25, 25-50, 50-75, 75-90, 90-100] = [262, 255, 236, 139, 108]
+
+### Jezero Crater (Perseverance) — top 5 candidate regions (top 0.5% of land, ranked by mean overall score)
 
 Target fingerprint (1°×1° window, medians): TES TI 289 J m⁻² K⁻¹ s⁻½ (Mars percentile 0.82), albedo 0.175, relief 478 m, slope 1.5°, composition mafic/silica/fines 0.49/0.27/0.11, modelled surface T 181–288 K.
 
-| # | Location (lat, lon) | Country | Area km² | Overall | Topo | Thermo | Mineral | Aridity | Extremes | Near known analog |
+| # | Location (lat, lon) | Country | Area km² | Overall | Topo | Thermo | Mineral | Aridity | Extremes (rel.) | Robust: candidate / top-25 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | 19.17, 41.52 | Saudi Arabia | 17,253 | **0.81** | 0.88 | 0.90 | 0.81 | 0.80 | 0.00 | — |
-| 2 | 65.04, 162.34 | Russia | 1,004 | **0.82** | 0.91 | 0.84 | 0.81 | 0.90 | 0.00 | — |
-| 3 | 54.49, 158.42 | Russia | 126 | **0.83** | 0.94 | 0.93 | 0.85 | 0.74 | 0.00 | — |
-| 4 | 62.89, 157.79 | Russia | 99 | **0.83** | 0.92 | 0.86 | 0.81 | 0.96 | 0.00 | — |
-| 5 | 10.40, 11.47 | Nigeria | 122 | **0.83** | 0.94 | 0.93 | 0.86 | 0.65 | 0.00 | — |
+| 1 | -5.97, -81.09 | Peru | 154 | **0.84** | 0.92 | 0.92 | 0.72 | 0.98 | 0.32 | 99% / 73% |
+| 2 | 20.50, 40.58 | Saudi Arabia | 5,646 | **0.84** | 0.87 | 0.89 | 0.84 | 0.86 | 0.28 | 99% / 73% |
+| 3 | 24.55, 56.51 | Oman | 112 | **0.82** | 0.70 | 0.94 | 0.83 | 0.97 | 0.33 | 92% / 53% |
+| 4 | 14.47, 40.75 | Eritrea | 120 | **0.82** | 0.90 | 0.89 | 0.72 | 0.93 | 0.32 | 98% / 53% |
+| 5 | -13.32, 12.70 | Angola | 120 | **0.82** | 0.95 | 0.94 | 0.73 | 0.72 | 0.38 | 98% / 47% |
 
-### Gale Crater (Curiosity) — top 5 candidate regions (all within the top 0.5% of land)
+Robustness = share of 500 Dirichlet-sampled weight vectors (centred on the defaults) in which the region still scores above the top-0.5% threshold / still ranks in the top 25. Extremes (rel.) is Earth-relative; the absolute "Mars gap" is reported separately.
+
+### Gale Crater (Curiosity) — top 5 candidate regions (top 0.5% of land, ranked by mean overall score)
 
 Target fingerprint (1°×1° window, medians): TES TI 317 J m⁻² K⁻¹ s⁻½ (Mars percentile 0.89), albedo 0.223, relief 1531 m, slope 5.2°, composition mafic/silica/fines 0.38/0.39/0.18, modelled surface T 178–292 K.
 
-| # | Location (lat, lon) | Country | Area km² | Overall | Topo | Thermo | Mineral | Aridity | Extremes | Near known analog |
+| # | Location (lat, lon) | Country | Area km² | Overall | Topo | Thermo | Mineral | Aridity | Extremes (rel.) | Robust: candidate / top-25 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | 76.41, -25.19 | Greenland | 189 | **0.88** | 0.92 | 0.88 | 0.94 | 1.00 | 0.00 | — |
-| 2 | 73.22, -81.30 | Canada | 36 | **0.90** | 0.93 | 0.95 | 0.95 | 0.95 | 0.00 | — |
-| 3 | 82.29, -41.85 | Greenland | 41 | **0.89** | 0.95 | 0.95 | 0.90 | 1.00 | 0.00 | — |
-| 4 | 76.72, -25.20 | Greenland | 71 | **0.89** | 0.94 | 0.95 | 0.89 | 1.00 | 0.00 | — |
-| 5 | -51.34, -73.38 | Chile | 77 | **0.88** | 0.99 | 0.95 | 0.95 | 0.75 | 0.00 | — |
+| 1 | 58.33, -155.15 | United States of America | 65 | **0.91** | 0.98 | 0.95 | 0.94 | 0.83 | 0.40 | 100% / 98% |
+| 2 | 37.63, 75.08 | China | 171 | **0.88** | 0.96 | 0.71 | 0.97 | 0.86 | 0.72 | 100% / 88% |
+| 3 | 40.53, 76.66 | China | 141 | **0.86** | 0.88 | 0.84 | 0.95 | 0.74 | 0.72 | 100% / 70% |
+| 4 | 27.84, 86.90 | Nepal | 191 | **0.86** | 0.92 | 0.79 | 0.97 | 0.76 | 0.57 | 100% / 68% |
+| 5 | 43.04, 94.34 | China | 226 | **0.86** | 0.89 | 0.89 | 0.97 | 0.63 | 0.65 | 98% / 68% |
 
-### Meridiani Planum (Opportunity) — top 5 candidate regions (all within the top 0.5% of land)
+Robustness = share of 500 Dirichlet-sampled weight vectors (centred on the defaults) in which the region still scores above the top-0.5% threshold / still ranks in the top 25. Extremes (rel.) is Earth-relative; the absolute "Mars gap" is reported separately.
+
+### Meridiani Planum (Opportunity) — top 5 candidate regions (top 0.5% of land, ranked by mean overall score)
 
 Target fingerprint (1°×1° window, medians): TES TI 223 J m⁻² K⁻¹ s⁻½ (Mars percentile 0.52), albedo 0.133, relief 77 m, slope 0.3°, composition mafic/silica/fines 0.55/0.33/0.11, modelled surface T 175–306 K.
 
-| # | Location (lat, lon) | Country | Area km² | Overall | Topo | Thermo | Mineral | Aridity | Extremes | Near known analog |
+| # | Location (lat, lon) | Country | Area km² | Overall | Topo | Thermo | Mineral | Aridity | Extremes (rel.) | Robust: candidate / top-25 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | -24.19, 113.48 | Australia | 620 | **0.73** | 0.95 | 0.79 | 0.72 | 0.51 | 0.00 | — |
-| 2 | -18.26, 123.94 | Australia | 323 | **0.70** | 0.95 | 0.91 | 0.68 | 0.20 | 0.00 | — |
-| 3 | -24.15, 32.10 | Mozambique | 254 | **0.70** | 0.93 | 0.73 | 0.74 | 0.41 | 0.00 | — |
-| 4 | -31.50, 130.00 | Australia | 343 | **0.69** | 0.83 | 0.81 | 0.80 | 0.29 | 0.00 | — |
-| 5 | 44.78, 53.48 | Kazakhstan | 88 | **0.70** | 0.68 | 0.62 | 0.76 | 0.99 | 0.00 | — |
+| 1 | -24.19, 113.47 | Australia | 508 | **0.75** | 0.95 | 0.63 | 0.87 | 0.49 | 0.46 | 95% / 80% |
+| 2 | 2.64, 37.79 | Kenya | 185 | **0.74** | 0.87 | 0.61 | 0.71 | 0.96 | 0.30 | 95% / 83% |
+| 3 | 23.78, 57.26 | Oman | 368 | **0.72** | 0.80 | 0.82 | 0.49 | 0.98 | 0.45 | 98% / 66% |
+| 4 | -31.49, 130.01 | Australia | 395 | **0.71** | 0.82 | 0.87 | 0.72 | 0.30 | 0.62 | 90% / 64% |
+| 5 | 44.78, 53.48 | Kazakhstan | 88 | **0.71** | 0.68 | 0.59 | 0.71 | 0.99 | 0.61 | 88% / 57% |
 
-Full report: [`results/REPORT.md`](results/REPORT.md) · validation: [`results/validation.md`](results/validation.md) · candidates: `results/candidates_<target>.csv` · cards: [`results/analog_cards/`](results/analog_cards/)
+Robustness = share of 500 Dirichlet-sampled weight vectors (centred on the defaults) in which the region still scores above the top-0.5% threshold / still ranks in the top 25. Extremes (rel.) is Earth-relative; the absolute "Mars gap" is reported separately.
+
+Full report (incl. the artifact found and fixed, robustness and blind predictions): [`results/REPORT.md`](results/REPORT.md) · validation: [`results/validation.md`](results/validation.md) · candidates: `results/candidates_<target>.csv` · cards: [`results/analog_cards/`](results/analog_cards/)
 
 ![AnalogFinder web app](results/screenshot_app.png)
 
@@ -86,6 +113,7 @@ python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
 
 python scripts/inspect_mars.py            # MVP-0: Mars shapes/ranges + orientation checks + quicklooks
 python src/download_earth.py modis        # MYD11C3 x12 + MCD43C3 x24 (~5.6 GB)
+python src/download_earth.py snow         # MOD10CM x12 (permanent snow/ice mask)
 python src/download_earth.py ag1km        # ASTER GED 1 km, 24,873 tiles (~11 GB)
 python src/download_dem.py                # Copernicus GLO-90 -> 1/30 deg (public AWS, overview reads)
 python scripts/quicklook_earth.py         # MVP-0: Earth quicklooks
@@ -95,6 +123,8 @@ python src/features_earth.py              # Earth features on the 0.05 deg grid
 python src/similarity.py                  # per-dimension + overall similarity rasters
 python src/validate.py                    # results/validation.md
 python src/candidates.py                  # results/candidates_<target>.csv
+python scripts/lat_hist.py after          # latitude self-check of the candidate lists
+python src/robustness.py                  # 500 weight samples -> robustness badges (~25 min per target)
 python src/case_study.py jezero 3         # Analog Cards (AG100 + EMIT + GLO-30); also gale / meridiani
 python src/export_web.py                  # web/data/*
 python scripts/make_report.py             # results/REPORT.md + README results tables

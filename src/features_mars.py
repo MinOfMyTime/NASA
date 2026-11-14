@@ -15,7 +15,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import io_mars as im  # noqa: E402
-from geo import Grid, resample_nearest  # noqa: E402
+from geo import Grid, block_reduce_nan, resample_nearest  # noqa: E402
 from stats import area_weights, quantile_table, robust_summary, to_percentile  # noqa: E402
 from topo import topo_features  # noqa: E402
 from mars_thermal_model import diurnal_cycle, extremes  # noqa: E402
@@ -115,9 +115,11 @@ def main():
                 print(f"   {f:18s} NO DATA")
     # small Mars grids for the web panel / quicklook (0.25 deg)
     g4 = Grid(4, lon0=0.0)
+    # area-mean (not nearest) so the 0.25 deg grids match the Earth web grids, which are block means of 0.05 deg cells
     np.savez_compressed(PROC / "mars_features_4ppd.npz",
-                        **{k: resample_nearest(feats[k], gm, g4).astype(np.float32)
-                           for k in ["elevation_m", "albedo", "thermal_inertia", "comp_mafic", "comp_silica", "comp_fines"]})
+                        **{k: block_reduce_nan(feats[k].astype(np.float32), 4).astype(np.float32)
+                           for k in ["elevation_m", "albedo", "thermal_inertia", "pct_ti", "comp_mafic", "comp_silica",
+                                     "comp_fines", "log_relief", "slope_deg", "log_rough", "tpi_m", "ndvi"]})
 
 
 if __name__ == "__main__":

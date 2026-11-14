@@ -1,0 +1,337 @@
+[
+ {
+  "target": "jezero",
+  "rank": 1,
+  "country": "Peru",
+  "lat": -5.9656,
+  "lon": -81.0946,
+  "emit_status": "ok",
+  "expected": [
+   "Calcite",
+   "Dolomite",
+   "Montmorillonite"
+  ],
+  "fraction": {
+   "Calcite": 0.2538486937816093,
+   "Chlorite": 0.09201884380629195,
+   "Dolomite": 0.00764671459348836,
+   "Goethite": 0.2576311857801839,
+   "Gypsum": 0.00012423050643546715,
+   "Hematite": 0.03467338819090959,
+   "Illite+Muscovite": 0.27078000411922204,
+   "Kaolinite": 0.07570214755314941,
+   "Montmorillonite": 0.0011883628707708503,
+   "Vermiculite": 1.1442283487477238e-05
+  },
+  "baseline": {
+   "Calcite": 0.13308333333333333,
+   "Chlorite": 0.042616666666666664,
+   "Dolomite": 0.005933333333333333,
+   "Goethite": 0.07266666666666667,
+   "Gypsum": 0.002,
+   "Hematite": 0.031983333333333336,
+   "Illite+Muscovite": 0.06641666666666667,
+   "Kaolinite": 0.020383333333333333,
+   "Montmorillonite": 0.0006666666666666666,
+   "Vermiculite": 1.6666666666666667e-05
+  },
+  "n_px": 611766,
+  "ag100": true,
+  "dem": "ok"
+ },
+ {
+  "target": "jezero",
+  "rank": 2,
+  "country": "Saudi Arabia",
+  "lat": 20.4978,
+  "lon": 40.5752,
+  "emit_status": "ok",
+  "expected": [
+   "Calcite",
+   "Dolomite",
+   "Montmorillonite"
+  ],
+  "fraction": {
+   "Calcite": 0.29925142168895125,
+   "Chlorite": 0.058934914851122865,
+   "Dolomite": 0.012056532146178592,
+   "Goethite": 0.030516381820676616,
+   "Gypsum": 0.00010977115762833316,
+   "Hematite": 0.04294796542208535,
+   "Illite+Muscovite": 0.2251772346815874,
+   "Kaolinite": 0.04088670701773109,
+   "Montmorillonite": 0.008345657178576328,
+   "Vermiculite": 0.0015764357914957844
+  },
+  "baseline": {
+   "Calcite": 0.37805,
+   "Chlorite": 0.09935,
+   "Dolomite": 0.010625,
+   "Goethite": 0.165775,
+   "Gypsum": 0.001175,
+   "Hematite": 0.1104125,
+   "Illite+Muscovite": 0.3887625,
+   "Kaolinite": 0.1280375,
+   "Montmorillonite": 0.0161875,
+   "Vermiculite": 0.0008875
+  },
+  "n_px": 327955,
+  "ag100": true,
+  "dem": "ok"
+ },
+ {
+  "target": "jezero",
+  "rank": 3,
+  "country": "Oman",
+  "lat": 24.5489,
+  "lon": 56.5128,
+  "emit_status": "ok",
+  "expected": [
+   "Calcite",
+   "Dolomite",
+   "Montmorillonite"
+  ],
+  "fraction": {
+   "Calcite": 0.10572554673085698,
+   "Chlorite": 0.028674024745894974,
+   "Dolomite": 0.0957828815543226,
+   "Goethite": 0.02054332515524048,
+   "Gypsum": 0.00020500340570173988,
+   "Hematite": 0.16711745372544093,
+   "Illite+Muscovite": 0.00043976537029566783,
+   "Kaolinite": 9.91951963072935e-06,
+   "Montmorillonite": 0.0006579948021717135,
+   "Vermiculite": 0.0003174246281833392
+  },
+  "baseline": {
+   "Calcite": 0.3354625,
+   "Chlorite": 0.0372125,
+   "Dolomite": 0.2053875,
+   "Goethite": 0.1566375,
+   "Gypsum": 0.0002875,
+   "Hematite": 0.2311875,
+   "Illite+Muscovite": 0.0062,
+   "Kaolinite": 0.0004625,
+   "Montmorillonite": 0.00265,
+   "Vermiculite": 0.000125
+  },
+  "n_px": 302434,
+  "ag100": true,
+  "dem": "ok"
+ },
+ {
+  "target": "gale",
+  "rank": 1,
+  "country": "United States of America",
+  "lat": 58.325,
+  "lon": -155.1502,
+  "emit_status": "no EMIT L2B MIN granules intersect this box",
+  "expected": [
+   "Montmorillonite",
+   "Kaolinite",
+   "Gypsum"
+  ],
+  "fraction": null,
+  "baseline": null,
+  "n_px": null,
+  "ag100": true,
+  "dem": "ok"
+ },
+ {
+  "target": "gale",
+  "rank": 2,
+  "country": "China",
+  "lat": 37.6328,
+  "lon": 75.0758,
+  "emit_status": "ok",
+  "expected": [
+   "Montmorillonite",
+   "Kaolinite",
+   "Gypsum"
+  ],
+  "fraction": {
+   "Calcite": 0.0536253537355103,
+   "Chlorite": 0.011132776641744273,
+   "Dolomite": 0.00043682774425951365,
+   "Goethite": 0.14505688256930685,
+   "Gypsum": 0.00042100065207619793,
+   "Hematite": 0.10916262020676513,
+   "Illite+Muscovite": 0.05167070785087081,
+   "Kaolinite": 0.014662218198623676,
+   "Montmorillonite": 0.0035421032306260565,
+   "Vermiculite": 0.00011870319137486785
+  },
+  "baseline": {
+   "Calcite": 0.0907625,
+   "Chlorite": 0.0103625,
+   "Dolomite": 0.0026375,
+   "Goethite": 0.06435,
+   "Gypsum": 2.5e-05,
+   "Hematite": 0.055575,
+   "Illite+Muscovite": 0.024975,
+   "Kaolinite": 0.0038375,
+   "Montmorillonite": 0.006175,
+   "Vermiculite": 0.0001625
+  },
+  "n_px": 631828,
+  "ag100": true,
+  "dem": "ok"
+ },
+ {
+  "target": "gale",
+  "rank": 3,
+  "country": "China",
+  "lat": 40.5252,
+  "lon": 76.6582,
+  "emit_status": "ok",
+  "expected": [
+   "Montmorillonite",
+   "Kaolinite",
+   "Gypsum"
+  ],
+  "fraction": {
+   "Calcite": 0.2101312982739086,
+   "Chlorite": 0.0004572576703284822,
+   "Dolomite": 0.0001261400469871675,
+   "Goethite": 0.08796466276683688,
+   "Gypsum": 0.0,
+   "Hematite": 0.03042002383145888,
+   "Illite+Muscovite": 0.08529995427423297,
+   "Kaolinite": 0.0004572576703284822,
+   "Montmorillonite": 0.20386484093965326,
+   "Vermiculite": 0.0
+  },
+  "baseline": {
+   "Calcite": 0.1522875,
+   "Chlorite": 0.0443625,
+   "Dolomite": 0.0054,
+   "Goethite": 0.0432125,
+   "Gypsum": 0.0004375,
+   "Hematite": 0.053,
+   "Illite+Muscovite": 0.0251875,
+   "Kaolinite": 0.0003,
+   "Montmorillonite": 0.0473,
+   "Vermiculite": 0.0001
+  },
+  "n_px": 443951,
+  "ag100": true,
+  "dem": "ok"
+ },
+ {
+  "target": "meridiani",
+  "rank": 1,
+  "country": "Australia",
+  "lat": -24.1939,
+  "lon": 113.4733,
+  "emit_status": "ok",
+  "expected": [
+   "Hematite",
+   "Gypsum"
+  ],
+  "fraction": {
+   "Calcite": 0.3071896939224727,
+   "Chlorite": 0.007928048997119179,
+   "Dolomite": 0.00146358040424168,
+   "Goethite": 0.00864632328521668,
+   "Gypsum": 0.13135923754798148,
+   "Hematite": 0.46553635008534333,
+   "Illite+Muscovite": 0.06747916618395546,
+   "Kaolinite": 0.014523815040509125,
+   "Montmorillonite": 0.004415842195911243,
+   "Vermiculite": 0.0015388833538002888
+  },
+  "baseline": {
+   "Calcite": 0.083825,
+   "Chlorite": 0.0014875,
+   "Dolomite": 0.0009875,
+   "Goethite": 0.04575,
+   "Gypsum": 0.03055,
+   "Hematite": 0.1981375,
+   "Illite+Muscovite": 0.0507875,
+   "Kaolinite": 0.0475375,
+   "Montmorillonite": 0.011225,
+   "Vermiculite": 0.000675
+  },
+  "n_px": 517908,
+  "ag100": true,
+  "dem": "ok"
+ },
+ {
+  "target": "meridiani",
+  "rank": 2,
+  "country": "Kenya",
+  "lat": 2.6402,
+  "lon": 37.7942,
+  "emit_status": "ok",
+  "expected": [
+   "Hematite",
+   "Gypsum"
+  ],
+  "fraction": {
+   "Calcite": 0.32494262671300245,
+   "Chlorite": 0.06220575699954101,
+   "Dolomite": 0.005812733591239919,
+   "Goethite": 0.019956068454527572,
+   "Gypsum": 3.27847354271851e-06,
+   "Hematite": 0.8846698577142482,
+   "Illite+Muscovite": 0.015221952658842044,
+   "Kaolinite": 0.006845452757196249,
+   "Montmorillonite": 0.0001934299390203921,
+   "Vermiculite": 0.0011966428430922563
+  },
+  "baseline": {
+   "Calcite": 0.136775,
+   "Chlorite": 0.0632625,
+   "Dolomite": 0.0159625,
+   "Goethite": 0.0089875,
+   "Gypsum": 0.0,
+   "Hematite": 0.4104625,
+   "Illite+Muscovite": 0.010325,
+   "Kaolinite": 0.0023875,
+   "Montmorillonite": 0.000425,
+   "Vermiculite": 0.0041375
+  },
+  "n_px": 305020,
+  "ag100": true,
+  "dem": "ok"
+ },
+ {
+  "target": "meridiani",
+  "rank": 3,
+  "country": "Oman",
+  "lat": 23.7791,
+  "lon": 57.2575,
+  "emit_status": "ok",
+  "expected": [
+   "Hematite",
+   "Gypsum"
+  ],
+  "fraction": {
+   "Calcite": 0.6714063775443031,
+   "Chlorite": 0.042557337335755854,
+   "Dolomite": 0.6234211935294169,
+   "Goethite": 0.32026928579578867,
+   "Gypsum": 0.0019309933205185594,
+   "Hematite": 0.4661312548823411,
+   "Illite+Muscovite": 0.001162106889257533,
+   "Kaolinite": 0.00044763936066566606,
+   "Montmorillonite": 0.0007250002194310591,
+   "Vermiculite": 0.00020889836831064417
+  },
+  "baseline": {
+   "Calcite": 0.70715,
+   "Chlorite": 0.071275,
+   "Dolomite": 0.36415,
+   "Goethite": 0.2006125,
+   "Gypsum": 0.0017625,
+   "Hematite": 0.3313375,
+   "Illite+Muscovite": 0.053425,
+   "Kaolinite": 0.0052125,
+   "Montmorillonite": 0.012875,
+   "Vermiculite": 0.000175
+  },
+  "n_px": 569655,
+  "ag100": true,
+  "dem": "ok"
+ }
+]

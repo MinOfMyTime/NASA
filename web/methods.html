@@ -52,9 +52,39 @@ Candidates: the top 0.5% of valid land cells → 8-connected regions of at least
 <li><b>Topographic baseline</b> is set by the supplied 1/16° MOLA grid (3.7 km). Finer analogs (e.g. 100 m rover-scale) need the 463 m MOLA mosaic or HiRISE/CTX DEMs. E–W pixel size shrinks with cos(latitude) on both planets.</li>
 <li><b>Mars thermal extremes</b> come from a simple 1-D model (no atmospheric column, constant downwelling IR). It matches the one in-situ value we checked.</li>
 <li><b>Earth LST</b> is sampled at the Aqua overpass times (~13:30/01:30), so Earth's diurnal range is a lower bound on the true max−min.</li>
-<li>Gaps: ASTER GED is missing for frozen and permanently icy land, which shows up as no data. Haughton Crater does have ASTER GED and MODIS coverage, so it is scored. ASTER swath striping is visible at high northern latitudes (e.g. Siberia).</li>
+<li>Gaps: ASTER GED is missing for frozen and permanently icy land, and the monthly ATI filter removes land with fewer than four months of ≥ 10 K day–night contrast (Haughton, Svalbard, parts of Iceland), all shown as n/a. ASTER swath striping is visible at high northern latitudes.</li>
 <li><b>Tuning disclosed:</b> after the first validation run we (a) switched Earth topography to Copernicus because of DEM gaps, (b) made Earth ATI percentiles bare-ground-relative, (c) raised the minimum scales for percentile features from 0.05 to 0.10 and for albedo from 0.02 to 0.05, and (d) required candidate regions of at least 4 cells.</li>
 </ul>
+<h2>Artifact found and fixed (round 2)</h2>
+<p><b>Symptom.</b> In round 1, 17 of Gale's 25 top candidate regions were above 70°N (Greenland, Arctic Canada). The Gale #1 card showed a
+3 K diurnal range next to an apparent-thermal-inertia percentile of 0.98 and a TIR spectral contrast of 0.014.</p>
+<p><b>Cause.</b> ATI = (1 − albedo)/(LST<sub>day</sub> − LST<sub>night</sub>) diverges when the day–night contrast collapses (polar day/night,
+near-coincident Aqua overpasses), so the "bedrock-like" high ATI was arithmetic, not rock. Snow-contaminated ASTER pixels have flat emissivity
+spectra, so the mineral indices there were noise. And when a dimension was unavailable its weight was silently redistributed, so cells with no
+mineral signal could outrank cells with a real one.</p>
+<p><b>Fix.</b> (1) ATI per month; a month counts only if LST<sub>day</sub> − LST<sub>night</sub> ≥ 10 K and LST<sub>day</sub> &gt; 0 °C; ≥ 4 usable months or n/a.
+(2) Mineral composition n/a where TIR contrast &lt; 0.012 (snow-flattened population: median 0.007 at 60–70°N vs 0.019–0.068 elsewhere) or mean ASTER
+observation count &lt; 3. (3) MOD10CM permanent snow/ice mask (every usable month ≥ 50% snow). (4) The overall score requires all five dimensions.</p>
+<p><b>Effect.</b> Valid land 94.6% → 80.4% of land area; ATI 95th percentile 0.146 → 0.075. Gale top-25 regions above 70°N: 17 → 0 (table in
+<code>results/REPORT.md</code>; histograms in <code>results/lat_hist_before.json</code> / <code>lat_hist_after.json</code>). Haughton Crater and Svalbard are now
+n/a (fewer than four months with ≥ 10 K contrast): a real polar desert would need a thermophysical proxy that does not depend on the diurnal cycle.</p>
+<h2>Guarding against overfitting</h2>
+<ul>
+<li><b>Blind set:</b> six published analogs (Pilbara, McMurdo Dry Valleys, Lonar, Dallol, Svalbard Bockfjord, Kilbourne Hole), with references in
+<code>config.yaml</code>, scored once with the frozen settings and reported as-is in <code>results/validation.md</code> and the sidebar.</li>
+<li><b>Null test:</b> 1,000 random valid land cells per target, so readers see what "random" looks like.</li>
+<li><b>Robustness:</b> 500 weight vectors from a Dirichlet distribution centred on the defaults; every candidate carries the share of samples in which it
+remains a candidate (top 0.5%) and remains in the top 25 (badge in the list).</li>
+</ul>
+<h2>Thermal extremes: relative score and the Mars gap</h2>
+<p>No Earth land cell approaches a ~90–110 K diurnal range or ~175–185 K nights, so the absolute score is ~0 everywhere. The weighted score therefore uses an
+<b>Earth-relative</b> extremes score (mean of the diurnal-range percentile and the inverted coldest-night percentile among valid land cells, target-independent),
+and the absolute comparison is shown separately as the <b>Mars gap</b> (map layer and side-panel bars) and never enters the weighted score.</p>
+<h2>Reverse search and mission modes</h2>
+<p>"Where on Mars is my place?" runs the same fingerprint code the other way: the clicked Earth cell becomes the target and every 0.25° Mars cell is scored on
+topography, thermophysics and mineralogy (aridity and extremes are constant across Mars), using the standard minimum scales as tolerances. Labels are the nearest
+of 77 IAU-named features. Mission modes are preset weights plus simple filters on the 0.25° Earth features (mean 3.7 km slope, NDVI band); finer landing-hazard
+checks (GLO-30 slope) are on the Analog Cards.</p>
 <h2>Life as a trade-off</h2>
 <p>A low aridity score means vegetation, and vegetation is what makes a site un-Mars-like. For biosignature and life-detection instrument
 tests, though, an extreme environment that still hosts sparse life (Atacama, Rio Tinto) is the point. Lower the aridity weight to explore those.</p>

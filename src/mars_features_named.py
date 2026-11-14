@@ -1,0 +1,25 @@
+"""Named Mars features for the reverse search ("where on Mars is my place?"). Approximate centre coordinates,
+planetocentric latitude, east-positive longitude 0-360, from the IAU/USGS Gazetteer of Planetary Nomenclature
+(https://planetarynames.wr.usgs.gov) and landing-site literature. Used only to LABEL the nearest named feature."""
+MARS_FEATURES = [
+    ("Olympus Mons", 18.65, 226.2), ("Arsia Mons", -8.3, 239.9), ("Pavonis Mons", 0.8, 246.6), ("Ascraeus Mons", 11.8, 255.5),
+    ("Alba Mons", 40.5, 250.4), ("Elysium Mons", 25.0, 147.2), ("Hellas Planitia", -42.4, 70.5), ("Argyre Planitia", -49.7, 316.0),
+    ("Isidis Planitia", 12.9, 87.0), ("Utopia Planitia", 46.7, 117.5), ("Chryse Planitia", 28.4, 319.7), ("Acidalia Planitia", 46.7, 338.0),
+    ("Amazonis Planitia", 24.8, 196.0), ("Elysium Planitia", 3.0, 154.7), ("Arcadia Planitia", 47.2, 184.3), ("Vastitas Borealis", 87.7, 32.5),
+    ("Valles Marineris", -14.0, 301.4), ("Noctis Labyrinthus", -6.9, 258.3), ("Kasei Valles", 24.6, 295.0), ("Ares Vallis", 10.3, 334.4),
+    ("Syrtis Major Planum", 9.5, 67.0), ("Hesperia Planum", -21.4, 109.9), ("Arabia Terra", 23.2, 6.0), ("Noachis Terra", -45.0, 350.0),
+    ("Terra Sirenum", -39.7, 206.0), ("Terra Cimmeria", -34.7, 145.0), ("Tyrrhena Terra", -11.9, 94.0), ("Tempe Terra", 39.3, 289.0),
+    ("Xanthe Terra", 1.7, 311.9), ("Margaritifer Terra", -4.9, 335.0), ("Solis Planum", -26.4, 270.0), ("Sinai Planum", -13.7, 272.2),
+    ("Lunae Planum", 10.7, 294.4), ("Daedalia Planum", -21.2, 234.5), ("Meridiani Planum", -1.9, 354.5), ("Jezero crater", 18.4, 77.6),
+    ("Gale crater", -5.4, 137.8), ("Gusev crater (Spirit)", -14.6, 175.5), ("Oxia Planum", 18.3, 335.4), ("Nili Fossae", 22.0, 76.0),
+    ("Mawrth Vallis", 24.0, 341.0), ("Eberswalde crater", -24.0, 326.5), ("Holden crater", -26.0, 326.0), ("Nilosyrtis Mensae", 35.0, 70.0),
+    ("Deuteronilus Mensae", 43.9, 23.9), ("Protonilus Mensae", 43.9, 48.8), ("Cerberus Fossae", 11.3, 166.4), ("Medusae Fossae", -3.2, 197.0),
+    ("Apollinaris Mons", -9.3, 174.4), ("Aeolis Mensae", -3.0, 140.0), ("InSight site (Elysium Planitia)", 4.5, 135.6),
+    ("Phoenix site (Vastitas Borealis)", 68.2, 234.3), ("Viking 1 site (Chryse)", 22.3, 312.0), ("Viking 2 site (Utopia)", 48.0, 134.3),
+    ("Pathfinder site (Ares Vallis)", 19.1, 326.8), ("Zhurong site (Utopia)", 25.1, 109.9), ("Promethei Terra", -58.0, 90.0),
+    ("Malea Planum", -65.8, 63.0), ("Planum Australe", -83.9, 160.0), ("Planum Boreum", 87.3, 0.0), ("Hecates Tholus", 32.1, 150.2),
+    ("Tharsis Montes", 1.6, 247.4), ("Thaumasia Planum", -21.7, 294.8), ("Icaria Planum", -43.3, 254.0), ("Aonia Terra", -58.0, 263.0),
+    ("Sabaea Terra", -1.0, 50.0), ("Schiaparelli crater", -2.7, 16.8), ("Huygens crater", -14.0, 55.5), ("Lyot crater", 50.5, 29.3),
+    ("Cassini crater", 23.4, 32.1), ("Antoniadi crater", 21.3, 60.8), ("Herschel crater", -14.7, 129.9), ("Newton crater", -40.5, 201.9),
+    ("Lomonosov crater", 65.0, 350.9), ("Mie crater", 48.3, 139.9), ("Milankovic crater", 54.5, 213.3), ("Korolev crater", 72.8, 164.6),
+]
