@@ -65,6 +65,11 @@ known_analogs:
   mauna_kea:     {name: "Mauna Kea flanks",           lat: 19.8,   lon: -155.5}
   rio_tinto:     {name: "Rio Tinto",                  lat: 37.7,   lon: -6.6}
   haughton:      {name: "Haughton Crater",            lat: 75.4,   lon: -89.7}
+  # Added in round 3 after the Gale #1 candidate (58.3N, 155.2W) was recognised as the Katmai area. Published analog:
+  # Fristad, Sharpton & Eichelberger, GSA Abstracts "Katmai and the Valley of Ten Thousand Smokes as a Mars analogue";
+  # NASA GSFC field campaigns 2022-2024 (Baker et al., LPSC 2023 #2837); Apollo field-geology training 1965-66.
+  # Used only for the 150 km "near known analog" flag; NOT part of the validation sets (they stay frozen).
+  katmai:        {name: "Katmai / Valley of Ten Thousand Smokes", lat: 58.27, lon: -155.16, exclude_only: true}
 
 # Blind validation set: published Mars analogs NOT used while developing or tuning the method. Scored once with the
 # frozen settings (src/validate.py) and reported as-is in results/validation.md.

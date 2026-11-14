@@ -117,7 +117,7 @@ Target fingerprint (1°×1° window, medians): TES TI 223 J m⁻² K⁻¹ s⁻½
 
 | # | Location (lat, lon) | Country | Area km² | Overall | Topo | Thermo | Mineral | Aridity | Extremes (rel.) | Robust: candidate / top-25 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | -24.19, 113.47 | Australia | 508 | **0.75** | 0.95 | 0.63 | 0.87 | 0.49 | 0.46 | 95% / 80% |
+| 1 | -24.19, 113.47 | Australia | 508 | **0.75** | 0.95 | 0.63 | 0.87 | 0.49 | 0.46 | 96% / 80% |
 | 2 | 2.64, 37.79 | Kenya | 185 | **0.74** | 0.87 | 0.61 | 0.71 | 0.96 | 0.30 | 95% / 83% |
 | 3 | 23.78, 57.26 | Oman | 368 | **0.72** | 0.80 | 0.82 | 0.49 | 0.98 | 0.45 | 98% / 66% |
 | 4 | -31.49, 130.01 | Australia | 395 | **0.71** | 0.82 | 0.87 | 0.72 | 0.30 | 0.62 | 90% / 64% |
@@ -152,9 +152,9 @@ the same EMIT scenes. ✅ = present in ≥ 5% of candidate pixels and enriched �
 
 | Candidate | Montmorillonite (box vs scene baseline) | Kaolinite (box vs scene baseline) | Gypsum (box vs scene baseline) |
 |---|---|---|---|
-| #1 United States of America (58.3, -155.2) | n/a (no EMIT L2B MIN granules intersect this box) | n/a (no EMIT L2B MIN granules intersect this box) | n/a (no EMIT L2B MIN granules intersect this box) |
-| #2 China (37.6, 75.1) | ❌ 0.4% vs 0.6% | ❌ 1.5% vs 0.4% | ❌ 0.0% vs 0.0% |
-| #3 China (40.5, 76.7) | ✅ 20.4% vs 4.7% | ❌ 0.0% vs 0.0% | ❌ 0.0% vs 0.0% |
+| #1 China (37.6, 75.1) | ❌ 0.4% vs 0.6% | ❌ 1.5% vs 0.4% | ❌ 0.0% vs 0.0% |
+| #2 China (40.5, 76.7) | ✅ 20.4% vs 4.7% | ❌ 0.0% vs 0.0% | ❌ 0.0% vs 0.0% |
+| #3 Nepal (27.8, 86.9) | ❌ 0.7% vs 2.3% | ❌ 0.1% vs 2.3% | ❌ 0.0% vs 0.0% |
 
 **Meridiani Planum (Opportunity)** — expected from the Mars target: Hematite, Gypsum
 
@@ -167,9 +167,9 @@ the same EMIT scenes. ✅ = present in ≥ 5% of candidate pixels and enriched �
 
 ## Case studies (Analog Cards)
 
-- [Analog Card — United States of America (58.33, -155.15) vs Gale Crater (Curiosity)](analog_cards/gale_1.md)
-- [Analog Card — China (37.63, 75.08) vs Gale Crater (Curiosity)](analog_cards/gale_2.md)
-- [Analog Card — China (40.53, 76.66) vs Gale Crater (Curiosity)](analog_cards/gale_3.md)
+- [Analog Card — China (37.63, 75.08) vs Gale Crater (Curiosity)](analog_cards/gale_1.md)
+- [Analog Card — China (40.53, 76.66) vs Gale Crater (Curiosity)](analog_cards/gale_2.md)
+- [Analog Card — Nepal (27.84, 86.90) vs Gale Crater (Curiosity)](analog_cards/gale_3.md)
 - [Analog Card — Peru (-5.97, -81.09) vs Jezero Crater (Perseverance)](analog_cards/jezero_1.md)
 - [Analog Card — Saudi Arabia (20.50, 40.58) vs Jezero Crater (Perseverance)](analog_cards/jezero_2.md)
 - [Analog Card — Oman (24.55, 56.51) vs Jezero Crater (Perseverance)](analog_cards/jezero_3.md)
